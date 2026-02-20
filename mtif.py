@@ -151,7 +151,41 @@ def run_install():
     shutil.copy("dependencies/femtic/src/femtic", "bin/")
     print("FEMTIC installed correctly.")
 
-
+def run_new(project_name):
+   if os.path.exists(project_name):
+        print(f"Error: Folder '{project_name}' already exists.")
+        sys.exit(1)
+   
+   print(f"Creating new MTIF project: {project_name}")
+   
+   os.makedirs(os.path.join(project_name, "preprocessing"))
+   os.makedirs(os.path.join(project_name, "computing"))
+   os.makedirs(os.path.join(project_name, "postprocessing"))
+   
+   # Crear mtif.conf básico
+   with open(os.path.join(project_name, "mtif.conf"), "w") as f:
+       f.write(
+       """
+       # ---- Execution Mode ----
+       cluster_mode = true
+       
+       # ---- Directories ----
+       inversion_dir = computing
+       
+       # ---- SLURM ----
+       slurm_script = run.slurm
+       
+       # ---- Automation ----
+       post_path = postprocessing
+       default_sites = 1-10
+       default_mode = impz
+       default_iter = 5
+       default_proc = 2
+       last_job = job_001
+       """
+       )
+   
+   print("Project created successfully.")
 
 
 
@@ -159,6 +193,9 @@ def run_install():
 def main():
     parser = argparse.ArgumentParser(description="MTIF - Magnetotelluric Inversion Framework")
     subparsers = parser.add_subparsers(dest="command")
+
+    new_parser = subparsers.add_parser("create", help="Create new MTIF project")
+    new_parser.add_argument("project_name")
 
     subparsers.add_parser("install", help="Install dependencies")
     subparsers.add_parser("mesh", help="Run mesh preprocessing")
@@ -187,6 +224,9 @@ def main():
 
     elif args.command == "post":
         run_post(args)
+
+    elif args.command == "create":
+        run_new(args.project_name)
 
     else:
         parser.print_help()
