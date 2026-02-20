@@ -67,10 +67,33 @@ def run_inversion(config):
 
 def run_post(args):
     print("== Running Postprocessing ==")
+    config = read_config()
+
+    job = args.job if args.job else config["last_job"]
+    sites = args.sites if args.sites else config["default_sites"]
+    mode = args.mode if args.mode else config["default_mode"]
+    iters = args.iter if args.iter else config["default_iter"]
+    procs = args.proc if args.proc else config["default_proc"]
+
+    results_path = f"postprocessing/{job}"
+    st_arg = f"st{sites}"
+    ip_arg = f"ip{iters}-{procs}"
+
+    print("== Running Postprocessing ==")
+    print("Job:", job)
+    print("Sites:", sites)
+    print("Mode:", mode)
+
     subprocess.run(
-        ["python3", "MTpostproess.py"] + args,
+        [
+            "./bin/MTpostprcess.py", results_path,
+            st_arg,
+            mode,
+            ip_arg
+        ],
         check=True
     )
+    
 
 
 def check_tool(tool_name):
@@ -110,11 +133,22 @@ def run_install():
     os.makedirs("bin", exist_ok=True)
     if not os.path.exists("dependencies/femtic"):
         subprocess.run(["git", "clone", FEMTIC_URL, "dependencies/femtic"], check=True)
-    subprocess.run(["patch", "Makefile", "../../patches/femtic.patch"],
-                   cwd="dependencies/femtic",
-                   check=True)
-    subprocess.run(["make"], cwd="dependencies/femtic", check=True)
-    shutil.copy("dependencies/femtic/femtic", "bin/")
+    # subprocess.run(["patch", "Makefile", "../../patches/femtic.patch"],
+    #                cwd="dependencies/femtic",
+    #                check=True)
+
+        # Sustituir Makefile original por el tuyo
+    if os.path.exists("patches/Makefile_IntelMPI"):
+        print("Replacing FEMTIC Makefile with Makefile_IntelMPI")
+        shutil.copy(
+            "patches/Makefile_IntelMPI",
+            "dependencies/femtic/src/Makefile"
+        )
+    else:
+        print("Makefile_IntelMPI not found in patches/")
+        sys.exit(1)
+    subprocess.run(["make"], cwd="dependencies/femtic/src", check=True)
+    shutil.copy("dependencies/femtic/src/femtic", "bin/")
     print("FEMTIC installed correctly.")
 
 
@@ -126,23 +160,34 @@ def main():
     parser = argparse.ArgumentParser(description="MTIF - Magnetotelluric Inversion Framework")
     subparsers = parser.add_subparsers(dest="command")
 
+    subparsers.add_parser("install", help="Install dependencies")
     subparsers.add_parser("mesh", help="Run mesh preprocessing")
     subparsers.add_parser("run", help="Run inversion")
     
     post_parser = subparsers.add_parser("post", help="Run postprocessing")
-    post_parser.add_argument("args", nargs=argparse.REMAINDER)
+    post_parser.add_argument("job", nargs="?", help="Job name (folder inside postprocessing)")
+    post_parser.add_argument("--sites", help="Site range (e.g., 1-10)")
+    post_parser.add_argument("--mode", choices=["impz", "rhoph"], help="Post mode")
+    post_parser.add_argument("--iter", type=int, help="Number of iterations")
+    post_parser.add_argument("--proc", type=int, help="Number of processes")
+
+
 
     args = parser.parse_args()
 
-    if args.command == "mesh":
+    if args.command == "install":
+        run_install()
+
+    elif args.command == "mesh":
         run_mesh()
+
     elif args.command == "run":
         config = read_config()
         run_inversion(config)
+
     elif args.command == "post":
-        run_post(args.args)
-    elif args.command == "install":
-        run_install()
+        run_post(args)
+
     else:
         parser.print_help()
 
