@@ -1,6 +1,8 @@
 # FEMTIC outputs
 # computing/*.log
 # computing/*.dat
+dependencies/
+bin/
 
 # Postprocessing figures
 postprocessing/*.png
