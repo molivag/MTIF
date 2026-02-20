@@ -1,0 +1,17 @@
+# FEMTIC outputs
+# computing/*.log
+# computing/*.dat
+
+# Postprocessing figures
+postprocessing/*.png
+postprocessing/*.pdf
+
+# Python
+__pycache__/
+*.pyc
+
+# Notebooks
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
