@@ -30,7 +30,12 @@ def read_config(config_file="mtif.conf"):
     return config
 
 
-def run_mesh():
+def run_mesh(args):
+    target_path = os.path.join("..", "postprocessing", "buildMesh", "reindexing_tetgen.py")
+    if not os.path.exists(target_path):
+        print(f"ERROR: reindexing_tetgen.py not found at {target_path}")
+        sys.exit(1)
+
     if not os.path.exists("set_meshtran.io"):
         print("ERROR: set_meshtran.io not found.")
         sys.exit(1)
@@ -38,9 +43,22 @@ def run_mesh():
     print("== Running MeshTran ==")
     subprocess.run(["./meshTranPreprocess"], check=True)
 
+    config = read_config()
+
+    mesh = args.mesh if args.mesh else config["default_mesh"]
+
+    subprocess.run(
+        [
+            # mtif post job_284 --axis freq --sites 1-10 --mode impz --iter 8 --proc 2
+            "./bin/meshTranPreprocess", mesh
+        ],
+        check=True
+    )
+
     if os.path.exists("plot_inputs.py"):
         print("== Plotting input geometry ==")
         subprocess.run(["python3", "plot_inputs.py"], check=True)
+
 
 
 def run_inversion(config):
@@ -71,25 +89,34 @@ def run_post(args):
 
     job = args.job if args.job else config["last_job"]
     sites = args.sites if args.sites else config["default_sites"]
-    mode = args.mode if args.mode else config["default_mode"]
     iters = args.iter if args.iter else config["default_iter"]
     procs = args.proc if args.proc else config["default_proc"]
+    xaxis = args.axis if args.axis else config["default_axis"]
+
+    if args.mode is not None:
+        mode = args.mode                        #Si usuario pasa --mode impz → usa impz
+    elif config.get("default_mode") in ["impz", "rhoph"]:
+        mode = config.get("default_mode")       #Si no pasa nada y el config tiene impz o rhoph → usa eso
+    else:
+        mode = "none"                           #Si no hay nada válido → usa "none"
 
     results_path = f"postprocessing/{job}"
     st_arg = f"st{sites}"
     ip_arg = f"ip{iters}-{procs}"
 
-    print("== Running Postprocessing ==")
     print("Job:", job)
     print("Sites:", sites)
     print("Mode:", mode)
 
+    mode = str(mode)
     subprocess.run(
         [
-            "./bin/MTpostprcess.py", results_path,
+            # mtif post job_284 --axis freq --sites 1-10 --mode impz --iter 8 --proc 2
+            "./bin/MTpostprocess.py", results_path,
             st_arg,
             mode,
-            ip_arg
+            ip_arg,
+            xaxis
         ],
         check=True
     )
@@ -151,72 +178,195 @@ def run_install():
     shutil.copy("dependencies/femtic/src/femtic", "bin/")
     print("FEMTIC installed correctly.")
 
+
 def run_new(project_name):
-   if os.path.exists(project_name):
+    if os.path.exists(project_name):
         print(f"Error: Folder '{project_name}' already exists.")
         sys.exit(1)
+    print(" ")
+    print(f" Creating new MTIF project: {project_name}")
    
-   print(f"Creating new MTIF project: {project_name}")
-   
-   os.makedirs(os.path.join(project_name, "preprocessing"))
-   os.makedirs(os.path.join(project_name, "computing"))
-   os.makedirs(os.path.join(project_name, "postprocessing"))
-   
-   # Crear mtif.conf básico
-   with open(os.path.join(project_name, "mtif.conf"), "w") as f:
-       f.write(
-       """
-       # ---- Execution Mode ----
-       cluster_mode = true
-       
-       # ---- Directories ----
-       inversion_dir = computing
-       
-       # ---- SLURM ----
-       slurm_script = run.slurm
-       
-       # ---- Automation ----
-       post_path = postprocessing
-       default_sites = 1-10
-       default_mode = impz
-       default_iter = 5
-       default_proc = 2
-       last_job = job_001
-       """
-       )
-   
-   print("Project created successfully.")
+    os.makedirs(os.path.join(project_name, "preprocessing"))
+    os.makedirs(os.path.join(project_name, "preprocessing/PlotWithPython"))
+    os.makedirs(os.path.join(project_name, "preprocessing/geometry"))
+    os.makedirs(os.path.join(project_name, "preprocessing/inv"))
+    os.makedirs(os.path.join(project_name, "preprocessing/DEM"))
+    os.makedirs(os.path.join(project_name, "preprocessing/edi_files"))
+    os.makedirs(os.path.join(project_name, "preprocessing/buildMesh"))
+    os.makedirs(os.path.join(project_name, "computing"))
+    os.makedirs(os.path.join(project_name, "postprocessing"))
+    
+    # Crear mtif.conf básico
+    with open(os.path.join(project_name, "mtif.conf"), "w") as f:
+        f.write(
+        """
+        # ---- Execution Mode ----
+        cluster_mode = true
+        
+        # ---- Directories ----
+        inversion_dir = computing
+        
+        # ---- SLURM ----
+        slurm_script = run.slurm
+        
+        # ---- Automation ----
+        post_path = postprocessing
+        default_sites = 1-10
+        default_mode = none
+        default_iter = 5
+        default_proc = 2
+        last_job = job_001
+        """
+        )
+    
+    print("     Project created successfully.")
+    print(f" now run:")
+    print(f" cd {project_name}")
+    print(" mtif install")
+
+
 
 
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MTIF - Magnetotelluric Inversion Framework")
-    subparsers = parser.add_subparsers(dest="command")
-
-    new_parser = subparsers.add_parser("create", help="Create new MTIF project")
-    new_parser.add_argument("project_name")
-
-    subparsers.add_parser("install", help="Install dependencies")
-    subparsers.add_parser("mesh", help="Run mesh preprocessing")
-    subparsers.add_parser("run", help="Run inversion")
+    parser = argparse.ArgumentParser(
+        prog="mtif",
+        description="""
+    MTIF - Magnetotelluric Inversion Framework © 2026
     
-    post_parser = subparsers.add_parser("post", help="Run postprocessing")
-    post_parser.add_argument("job", nargs="?", help="Job name (folder inside postprocessing)")
-    post_parser.add_argument("--sites", help="Site range (e.g., 1-10)")
-    post_parser.add_argument("--mode", choices=["impz", "rhoph"], help="Post mode")
-    post_parser.add_argument("--iter", type=int, help="Number of iterations")
-    post_parser.add_argument("--proc", type=int, help="Number of processes")
+ An Integrated framework for preprocessing, inversion and postprocessing of
+    3D magnetotelluric data using FEMTIC as inversion engine.
 
+    Author: Marco A Oliva Gutierrez
+            University of Barcelona - Geomodels Research Institute
+    """,
+        epilog="""
+    Examples:
+      mtif create
+      mtif install
+      mtif mesh
+      mtif run
+      mtif post job_284 --sites 1-10 --mode impz --iter 8 --proc 2 --axis freq
+    
+    For detailed help on a command:
+      mtif <command> --help
+    """,
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="MTIF v0.1.0"
+    )
+
+
+
+    subparsers = parser.add_subparsers(
+    dest="command",
+    required=True
+    )
+    # --------------------------------------------------
+    # CREATE
+    # --------------------------------------------------
+    create_parser = subparsers.add_parser(
+        "create",
+        help="  Create a new MTIF project",
+        description="Create a new MTIF project directory with predefined structure."
+    )
+    create_parser.add_argument(
+        "project_name",
+        help="Name of the new project directory"
+    )
+    
+    # --------------------------------------------------
+    # INSTALL
+    # --------------------------------------------------
+    install_parser = subparsers.add_parser(
+        "install",
+        help="Install required third-party dependencies",
+        description="Clone and compile required tools such as FEMTIC and TetGen."
+    )
+    
+    # --------------------------------------------------
+    # MESH
+    # --------------------------------------------------
+    mesh_parser = subparsers.add_parser(
+        "mesh",
+        help="Run mesh preprocessing",
+        description="Execute MeshTran preprocessing pipeline."
+    )
+    
+    mesh_parser.add_argument(
+        "--mesh",
+        choices=["native", "external"],
+        help="Site range (native (default)  or external)"
+    )
+
+    
+    # --------------------------------------------------
+    # RUN
+    # --------------------------------------------------
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Run inversion",
+        description="Launch FEMTIC inversion locally or in cluster mode."
+    )
+    
+    # --------------------------------------------------
+    # POST
+    # --------------------------------------------------
+    post_parser = subparsers.add_parser(
+        "post",
+        help="Run postprocessing",
+        description="Merged results and generate plots from inversion outputs."
+    )
+    
+    post_parser.add_argument(
+        "job",
+        nargs="?",
+        help="Job name (folder inside postprocessing)"
+    )
+    
+    post_parser.add_argument(
+        "--sites",
+        help="Site range (e.g., 1-10)"
+    )
+    
+    post_parser.add_argument(
+        "--mode",
+        choices=["impz", "rhoph"],
+        help="Postprocessing mode"
+    )
+    
+    post_parser.add_argument(
+        "--iter",
+        type=int,
+        help="Number of iterations"
+    )
+    
+    post_parser.add_argument(
+        "--proc",
+        type=int,
+        help="Number of processes"
+    )
+
+    post_parser.add_argument(
+        "--axis",
+        help="Set x axis (e.g., freq or period)"
+    )
 
 
     args = parser.parse_args()
 
-    if args.command == "install":
+    if args.command == "create":
+        run_new(args.project_name)
+
+    elif args.command == "install":
         run_install()
 
     elif args.command == "mesh":
-        run_mesh()
+        run_mesh(args)
 
     elif args.command == "run":
         config = read_config()
@@ -224,9 +374,6 @@ def main():
 
     elif args.command == "post":
         run_post(args)
-
-    elif args.command == "create":
-        run_new(args.project_name)
 
     else:
         parser.print_help()

@@ -5,8 +5,7 @@ dependencies/
 bin/
 
 # Postprocessing figures
-postprocessing/*.png
-postprocessing/*.pdf
+postprocessing/
 
 # Python
 __pycache__/
