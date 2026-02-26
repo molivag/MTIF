@@ -1,0 +1,61 @@
+# ==========================================================
+# MTIF Configuration File
+# Magnetotelluric Inversion Framework
+# ==========================================================
+
+# ------------------------
+# Execution
+# ------------------------
+[execution]
+cluster_mode = false
+inversion_dir = "computing"
+
+# ------------------------
+# SLURM
+# ------------------------
+[slurm]
+script = "run.slurm"
+
+# ------------------------
+# Mesh Defaults
+# ------------------------
+[mesh]
+default_mesh = "native"
+
+# ---- Domain ----
+domain_x = [-50.0, 50.0]
+domain_y = [-40.0, 40.0]
+domain_z = [-40.0, 40.0]
+
+pad_x = 10.0
+pad_y = 10.0
+
+# ---- Topography ----
+dem_file = "TOTPO_KAL_BBMT_FLAT_475m.xyz"
+dem_units = "kilometers"
+
+topo_file = "topography_for.dat"
+bathy_file = "bathymetry_for.dat"
+coast_file = "coast_line.dat"
+
+# ---- Sea ----
+has_sea = false
+sea_level = 0.0
+
+# ---- Refinement ----
+tet_refinement = 2
+
+# ------------------------
+# Postprocessing
+# ------------------------
+[post]
+post_path = "postprocessing"
+auto_post = false
+post_data = "rho_phase"
+default_axis = "period"
+
+last_job = "job_284"
+default_sites = "1-10"
+default_mode = "none"
+default_iter = 8
+default_proc = 2
