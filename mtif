@@ -2,6 +2,7 @@
 
 import subprocess
 import argparse
+import tomllib
 import shutil
 import sys
 import os
@@ -14,53 +15,114 @@ FEMTIC_URL = "https://github.com/yoshiya-usui/femtic.git"
 TETGEN_URL = "https://github.com/TetGen/TetGen.git"
 
 
-def read_config(config_file="mtif.conf"):
-    config = {}
-    if not os.path.exists(config_file):
-        print(f"ERROR: {config_file} not found.")
+def read_config():
+    try:
+        with open("mtif.toml", "rb") as f:
+            config = tomllib.load(f)
+        return config
+    except FileNotFoundError:
+        print("ERROR: mtif.toml not found.")
         sys.exit(1)
 
-    with open(config_file) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                key, value = line.split("=", 1)
-                config[key.strip()] = value.strip()
+def update_meshtran_io_from_toml(config,mesh_type):
+    mesh_cfg = config["mesh"]
 
-    return config
+    #from TOML to io
+    replacements = {
+        
+        "MESH_NATURE": mesh_type,
+        "DEM_FILE": mesh_cfg["dem_file"],
+        "DEM_UNITS": mesh_cfg["dem_units"],
+        "XMIN_DOM": mesh_cfg["domain_x"][0],
+        "XMAX_DOM": mesh_cfg["domain_x"][1],
+        "YMIN_DOM": mesh_cfg["domain_y"][0],
+        "YMAX_DOM": mesh_cfg["domain_y"][1],
+        "ZMIN_DOM": mesh_cfg["domain_z"][0],
+        "ZMAX_DOM": mesh_cfg["domain_z"][1],
+        "PAD_X":mesh_cfg["pad_x"],
+        "PAD_Y": mesh_cfg["pad_y"],
+        "HAS_SEA":"YES" if mesh_cfg["has_sea"]else "NO",
+        "SEA_LEVEL": mesh_cfg["sea_level"],
+        "TET_REFINEMENT": mesh_cfg["tet_refinement"],
+        "TOPO_FILE": mesh_cfg["topo_file"],
+        "BATHY_FILE": mesh_cfg["bathy_file"],
+        "COSLI_FILE": mesh_cfg["coast_file"],
+    }
+    with open("bin/set_meshtran.io","r") as f:
+        lines = f.readlines()
+    
+    new_lines = []
+    
+    for line in lines:
+        stripped = line.strip()
+
+        if "=" in stripped:
+            key = stripped.split("=")[0].strip()
+
+            if key in replacements:
+                new_value = replacements[key] 
+                new_line = f"{key} = {new_value}\n"
+                new_lines.append(new_line)
+                continue
+
+        new_lines.append(line)
+
+    with open("bin/set_meshtran.io", "w") as f:
+        f.writelines(new_lines)
+
+    print(" 📖 set_meshtran.io updated from mtif.toml")
 
 
+
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+#
+# Comando para construir la malla 
+#
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 def run_mesh(args):
-    target_path = os.path.join("..", "postprocessing", "buildMesh", "reindexing_tetgen.py")
+# --- MODO CHECK ---
+    if args.check:
+        target_path = os.path.join("bin", "check_domain.py")
+        if os.path.exists(target_path):
+            print("     == Checking mesh geometry ==")
+            subprocess.run(["python3", "bin/check_domain.py"], check=True)
+        else:
+            print("plot_inputs.py not found.")
+        return   # <-- IMPORTANTE (sale de la función)
+
+
+    target_path = os.path.join( "preprocessing", "buildMesh", "reindexing_tetgen.py")
     if not os.path.exists(target_path):
         print(f"ERROR: reindexing_tetgen.py not found at {target_path}")
         sys.exit(1)
 
-    if not os.path.exists("set_meshtran.io"):
+    if not os.path.exists("bin/set_meshtran.io"):
         print("ERROR: set_meshtran.io not found.")
         sys.exit(1)
 
-    print("== Running MeshTran ==")
-    subprocess.run(["./meshTranPreprocess"], check=True)
 
     config = read_config()
+    mesh_cfg = config["mesh"]
 
-    mesh = args.mesh if args.mesh else config["default_mesh"]
+    mesh_type = args.mesh if args.mesh else mesh_cfg["default_mesh"]
 
-    subprocess.run(
-        [
-            # mtif post job_284 --axis freq --sites 1-10 --mode impz --iter 8 --proc 2
-            "./bin/meshTranPreprocess", mesh
-        ],
-        check=True
-    )
+    print("== Updating set_meshtran.io from mtif.toml ==")
+    update_meshtran_io_from_toml(config, mesh_type)
+    
+    print("     == Running meshTran ==")
+    subprocess.run(["bin/meshTranPreprocessing"], check=True)
 
-    if os.path.exists("plot_inputs.py"):
-        print("== Plotting input geometry ==")
-        subprocess.run(["python3", "plot_inputs.py"], check=True)
-
+    # if os.path.exists("plot_inputs.py"):
+    #     print("== Plotting input geometry ==")
+    #     subprocess.run(["python3", "plot_inputs.py"], check=True)
 
 
+
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+#
+# Revisar herramientas necesarias en el sistema
+#
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 def run_inversion(config):
     inversion_dir = config.get("inversion_dir", "computing")
     cluster_mode = config.get("cluster_mode", "false").lower() == "true"
@@ -83,16 +145,23 @@ def run_inversion(config):
         subprocess.run(["femtic"], cwd=inversion_dir, check=True)
 
 
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+#
+# Comando para lanzar el postprocesado
+#
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 def run_post(args):
     print("== Running Postprocessing ==")
     config = read_config()
+    post_cfg = config["post"]
 
-    job = args.job if args.job else config["last_job"]
-    sites = args.sites if args.sites else config["default_sites"]
-    iters = args.iter if args.iter else config["default_iter"]
-    procs = args.proc if args.proc else config["default_proc"]
-    xaxis = args.axis if args.axis else config["default_axis"]
+    job = args.job if args.job else post_cfg["last_job"]
+    sites = args.sites if args.sites else post_cfg["default_sites"]
+    iters = args.iter if args.iter else post_cfg["default_iter"]
+    procs = args.proc if args.proc else post_cfg["default_proc"]
+    xaxis = args.axis if args.axis else post_cfg["default_axis"]
 
+    
     if args.mode is not None:
         mode = args.mode                        #Si usuario pasa --mode impz → usa impz
     elif config.get("default_mode") in ["impz", "rhoph"]:
@@ -100,29 +169,30 @@ def run_post(args):
     else:
         mode = "none"                           #Si no hay nada válido → usa "none"
 
-    results_path = f"postprocessing/{job}"
+    results_path = f"{post_cfg['post_path']}/{job}"
     st_arg = f"st{sites}"
     ip_arg = f"ip{iters}-{procs}"
 
-    print("Job:", job)
-    print("Sites:", sites)
-    print("Mode:", mode)
 
-    mode = str(mode)
-    subprocess.run(
-        [
-            # mtif post job_284 --axis freq --sites 1-10 --mode impz --iter 8 --proc 2
-            "./bin/MTpostprocess.py", results_path,
-            st_arg,
-            mode,
-            ip_arg,
-            xaxis
-        ],
-        check=True
-    )
-    
+    print("   Results folder: ",results_path)
+    print("   Job:", job)
+    print("   Sites:", sites)
+    print("   Mode:", mode)
+
+    cmd = ["./bin/MTpostprocess.py", results_path, st_arg, ip_arg, xaxis ] 
+
+    # mode = str(mode)
+    if mode != "none":
+      cmd.append(mode)
 
 
+    subprocess.run(cmd, check=True)
+
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+#
+# Revisar herramientas necesarias en el sistema
+#
+#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 def check_tool(tool_name):
     if shutil.which(tool_name) is None:
         print(f"ERROR: Required tool '{tool_name}' not found in PATH.")
@@ -194,32 +264,70 @@ def run_new(project_name):
     os.makedirs(os.path.join(project_name, "preprocessing/edi_files"))
     os.makedirs(os.path.join(project_name, "preprocessing/buildMesh"))
     os.makedirs(os.path.join(project_name, "computing"))
+    os.makedirs(os.path.join(project_name, "patches"))
     os.makedirs(os.path.join(project_name, "postprocessing"))
     
     # Crear mtif.conf básico
-    with open(os.path.join(project_name, "mtif.conf"), "w") as f:
+    with open(os.path.join(project_name, "mtif.toml"), "w") as f:
         f.write(
         """
-        # ---- Execution Mode ----
-        cluster_mode = true
+        [execution]
+        cluster_mode = false
+        inversion_dir = "computing"
         
-        # ---- Directories ----
-        inversion_dir = computing
+        # ------------------------
+        # SLURM
+        # ------------------------
+        [slurm]
+        script = "run.slurm"
         
-        # ---- SLURM ----
-        slurm_script = run.slurm
+        # ------------------------
+        # Mesh Defaults
+        # ------------------------
+        [mesh]
+        default_mesh = "native"
+
+        # ---- Domain ----
+        domain_x = [0.0, 0.0]
+        domain_y = [0.0, 0.0]
+        domain_z = [0.0, 0.0]
         
-        # ---- Automation ----
-        post_path = postprocessing
-        default_sites = 1-10
-        default_mode = none
-        default_iter = 5
-        default_proc = 2
-        last_job = job_001
+        pad_x = 0.0
+        pad_y = 0.0
+
+        # ---- Topography ----
+        dem_file = "file.xyz"
+        dem_units = "kilometers"
+        
+        topo_file = "topography_for.dat"
+        bathy_file = "bathymetry_for.dat"
+        coast_file = "coast_line.dat"
+        
+        # ---- Sea ----
+        has_sea = false
+        sea_level = 0.0
+        
+        # ---- Refinement ----
+        tet_refinement = x
+        
+        # ------------------------
+        # Postprocessing
+        # ------------------------
+        [post]
+        post_path = "postprocessing"
+        auto_post = false
+        post_data = "rho_phase"
+        default_axis = "period"
+        
+        last_job = "job_284"
+        default_sites = "M-N"
+        default_mode = "none"
+        default_iter = A
+        default_proc = B
         """
         )
     
-    print("     Project created successfully.")
+    print(f"     Project {project_name} created successfully.")
     print(f" now run:")
     print(f" cd {project_name}")
     print(" mtif install")
@@ -303,6 +411,11 @@ def main():
         help="Site range (native (default)  or external)"
     )
 
+    mesh_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Only check and plot existing mesh (no mesh generation)"
+    )
     
     # --------------------------------------------------
     # RUN

@@ -6,6 +6,8 @@ bin/
 
 # Postprocessing figures
 postprocessing/
+preprocessing/
+computing/
 
 # Python
 __pycache__/
