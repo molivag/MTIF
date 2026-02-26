@@ -2,12 +2,13 @@
 # computing/*.log
 # computing/*.dat
 dependencies/
-bin/
 
 # Postprocessing figures
 postprocessing/
 preprocessing/
 computing/
+bin/
+
 
 # Python
 __pycache__/
