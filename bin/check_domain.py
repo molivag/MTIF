@@ -1,17 +1,29 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
+import os
 
 # ---------- CARGA DATOS ----------
 # UTM
-dem_utm   = np.loadtxt("./input_data/PlotWithPython/dem_utm_km.dat")
-sites_utm = np.loadtxt("./input_data/PlotWithPython/sites_utm_km.dat", usecols=(1,2), ndmin=2)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dem_path = os.path.join(BASE_DIR,"..","preprocessing","PlotWithPython","dem_utm_km.dat")
+sites_path = os.path.join(BASE_DIR,"..","preprocessing","PlotWithPython","sites_utm_km.dat")
+maya_path = os.path.join(BASE_DIR,"..","preprocessing","geometry","topography_for.dat")
+sites_maya_path = os.path.join(BASE_DIR,"..","preprocessing","geometry","sites_coord_elev.dat")
+domain_path = os.path.join(BASE_DIR,"..","preprocessing","geometry","analysis_domain.dat")
+coast_path = os.path.join(BASE_DIR,"..","preprocessing","geometry","coast_line.dat")
 
+
+
+
+dem_utm   = np.loadtxt(dem_path)
+sites_utm = np.loadtxt(sites_path, usecols=(1,2), ndmin=2)
 
 # Maya / FEMTIC local
-dem_maya   = np.loadtxt("./input_data/geometry/topography_for.dat")
-sites_maya = np.loadtxt("./input_data/geometry/sites_coord_elev.dat", usecols=(1,2,3), ndmin=2)
-domain     = np.loadtxt("./input_data/geometry/analysis_domain.dat")
-coast      = np.loadtxt("./input_data/geometry/coast_line.dat", skiprows=1)
+dem_maya   = np.loadtxt(maya_path)
+sites_maya = np.loadtxt(sites_maya_path, usecols=(1,2,3), ndmin=2)
+domain     = np.loadtxt(domain_path)
+coast      = np.loadtxt(coast_path, skiprows=1)
 
 
 resample = 1            # <-- aquí cambias 3, 5, 10, etc.
@@ -39,7 +51,7 @@ ax.set_ylabel("Y (km)")
 ax.set_aspect("equal", adjustable="box")
 
 # ===============================
-# SUBPLOT 2 — MAYA / FEMTIC
+# SUBPLOT 2 — MALLA / FEMTIC
 # ===============================
 ax = axs[1]
 # ax.scatter(dem_maya[::resample,0],
@@ -60,9 +72,13 @@ fig.colorbar(sc, ax=ax, label="Elevation (m)")
 
 
 
-ax.scatter(sites_maya[:,0],
-           sites_maya[:,1],
-           s=ms, marker="v", c="m")
+ax.scatter(sites_maya[:,0], sites_maya[:,1], s=ms, marker="v", c="m")
+
+
+ax.set_title("Analysis domain + Sites in mesh coordinate")
+ax.set_xlabel("X (km)")
+ax.set_ylabel("Y (km)")
+ax.set_aspect("equal", adjustable="box")
 
 # Analysis domain (rectángulo)
 xmin, xmax = domain[0,0], domain[0,1]
@@ -71,12 +87,37 @@ ax.plot([xmin, xmax, xmax, xmin, xmin],
         [ymin, ymin, ymax, ymax, ymin], 'k-')
 
 # Coastline
-# ax.plot(coast[:,0], coast[:,1], 'r')
+ax.plot(coast[:,0], coast[:,1], 'r')
 
-# ax.set_title("Maya / FEMTIC — DEM + Sites + Domain + Coast")
-# ax.set_xlabel("X (km)")
-# ax.set_ylabel("Y (km)")
-# ax.set_aspect("equal", adjustable="box")
+ax.set_title("Domain + Sites + Coast")
+ax.set_xlabel("X (km)")
+ax.set_ylabel("Y (km)")
+ax.set_aspect("equal", adjustable="box")
 
+
+legend_elements = [
+    Line2D([0], [0], color='k', linestyle='-',
+           label='Analysis Domain '),
+    Line2D([0], [0], color='r', linestyle='-',
+           label='Coast Line ')
+]
+
+fig.legend(
+    handles=legend_elements,
+    loc='upper center',
+    ncol=2,
+    frameon=False,
+    bbox_to_anchor=(0.86, 0.07)
+)
+
+x0 = ax.get_xlim()[0] + 5
+y0 = ax.get_ylim()[0] + 5
+
+ax.annotate("N", xy=(x0, y0+15), xytext=(x0, y0),
+            arrowprops=dict(arrowstyle="->", lw=1.5),
+            ha="center")
+ax.annotate("E", xy=(x0+15, y0), xytext=(x0+2, y0),
+            arrowprops=dict(arrowstyle="->", lw=1.5),
+            va="center")
 plt.tight_layout()
 plt.show()
