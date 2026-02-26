@@ -6,16 +6,13 @@
 # ------------------------
 # Execution
 # ------------------------
-[execution]
+[cluster]
 cluster_mode = false
 inversion_dir = "computing"
-
-# ------------------------
-# SLURM
-# ------------------------
-[slurm]
 script = "run.slurm"
-
+host = "magma.cluster.ub"
+user = "marcoolivag"
+remote_results_base = "~/maxwell"
 # ------------------------
 # Mesh Defaults
 # ------------------------
