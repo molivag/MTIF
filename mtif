@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
+from halo import Halo
 from tqdm import tqdm
 import collections
 import subprocess
@@ -7,6 +9,7 @@ import argparse
 import tomllib
 import shutil
 import shlex
+import time
 import sys
 import os
 import re
@@ -304,15 +307,30 @@ def run_download(args):
 
     os.makedirs(post_path, exist_ok=True)
 
+    control_path = f"/tmp/mtif_mux_{os.getpid()}"
+
     print("   == MTIF DOWNLOAD ==")
     print(f"   Remote: {user}@{host}:{remote_base}")
     print(f"   Local:  {post_path}/")
+
+    print("   Opening SSH master connection...")
     print("   Step 1) Validating remote folders...")
 
 
 
 
-    control_path = "/tmp/mtif_mux_%r@%h:%p"
+    # control_path = "/tmp/mtif_mux_%r@%h:%p"
+
+    master_cmd = [
+        "ssh",
+        "-MNf",
+        "-o", "ControlMaster=yes",
+        "-o", f"ControlPath={control_path}",
+        "-o", "ControlPersist=600",
+        f"{user}@{host}"
+    ]
+
+    subprocess.run(master_cmd, check=True)
     
     ssh_opts = [
         "-o", "ControlMaster=auto",
@@ -330,8 +348,7 @@ def run_download(args):
         # y liste directorios que matcheen job_XXX*
         # Nota: redirigimos stderr para no ensuciar salida si no hay match
         remote_cmd = f"cd {remote_base} && ls -d {prefix}* 2>/dev/null"
-        proc = subprocess.run(
-            ["ssh", f"{user}@{host}", remote_cmd],
+        proc = subprocess.run(["ssh", *ssh_opts, f"{user}@{host}", remote_cmd],
             capture_output=True,
             text=True
         )
@@ -374,8 +391,10 @@ def run_download(args):
     skipped_exists = []
     failed = []
 
+    # 2️⃣ Loop de descargas
     # tqdm por job
     # for prefix in tqdm(list(resolved.keys()), desc="Downloading jobs", unit="job"):
+    started_download = False
     for prefix in resolved.keys():
         remote_folder = resolved[prefix]
         local_dest = os.path.join(post_path, prefix)
@@ -386,6 +405,11 @@ def run_download(args):
             continue
 
         os.makedirs(local_dest, exist_ok=True)
+
+        # Si llega aquí, va a descargar algo real
+        if not started_download:
+            print()   # ← solo una vez
+            started_download = True
 
         success = rsync_with_progress(
             user,
@@ -402,12 +426,128 @@ def run_download(args):
             print(f"\nWARNING: Download failed for {prefix} ({remote_folder})")
             failed.append(prefix)
 
+
+
+    # 3️⃣ Cerrar master UNA vez
+    print("Closing SSH master connection...")
+
+    close_cmd = [
+        "ssh",
+        "-O", "exit",
+        "-o", f"ControlPath={control_path}",
+        f"{user}@{host}"
+    ]
+
+    subprocess.run(close_cmd)
+
+
+
+
     print("\n== Download summary ==")
     print(f"Downloaded:      {downloaded}")
     print(f"Skipped (exist): {skipped_exists}")
     print(f"Missing:         {missing}")
     print(f"Ambiguous:       {ambiguous}")
     print(f"Failed:          {failed}")
+
+def run_upload():
+    config = read_config()
+
+    # --- Lee config ---
+    if "cluster" not in config:
+        print("ERROR: Missing [cluster] section in mtif.toml")
+        sys.exit(1)
+
+    if "post" not in config or "post_path" not in config["post"]:
+        print("ERROR: Missing [post].post_path in mtif.toml")
+        sys.exit(1)
+
+    cluster = config["cluster"]
+    host = cluster.get("host")
+    user = cluster.get("user")
+
+    control_path = f"/tmp/mtif_mux_{os.getpid()}"
+    ssh_opts = [
+        "-o", "ControlMaster=auto",
+        "-o", f"ControlPath={control_path}",
+        "-o", "ControlPersist=600"
+    ]
+
+    project_name = Path.cwd().name
+    print("   Opening SSH master connection...")
+
+    subprocess.run(
+        [
+            "ssh",
+            "-MNf",
+            "-o", "ControlMaster=yes",
+            "-o", f"ControlPath={control_path}",
+            "-o", "ControlPersist=600",
+            f"{user}@{host}"
+        ],
+        check=True
+    )
+
+    print("   SSH master connection established.")
+
+    subprocess.run(
+        ["ssh", *ssh_opts, f"{user}@{host}",
+         f"mkdir -p ~/{project_name}"],
+        check=True
+    )
+    # subprocess.run([
+    #     "rsync",
+    #     "-avz",
+    #     "-e", f"ssh {' '.join(ssh_opts)}",
+    #     "--exclude", "*.log",
+    #     "--exclude", "output*",
+    #     "./computing/",
+    #     f"{user}@{host}:~/{project_name}"
+    # ], check=True)
+
+    # remote_path = f"{user}@{host}:~/{project_name}"
+    
+    # subprocess.run(
+    #     [
+    #         "rsync",
+    #         "-avz",
+    #         "-e", f"ssh {' '.join(ssh_opts)}",
+    #         "--exclude", "*.log",
+    #         "--exclude", "output*",
+    #         "./computing/",
+    #         f"{user}@{host}:~/{project_name}/computing/"
+    #     ],
+    #     check=True
+    # )
+    print()  # pequeño espacio visual
+
+    spinner = Halo(
+        text=f"   Uploading computing/ to {host}...",
+        spinner="dots"
+    )
+    spinner.start()
+    
+    result = subprocess.run(
+        [
+            "rsync",
+            "-az",
+            "-e", f"ssh {' '.join(ssh_opts)}",
+            "--exclude", "*.log",
+            "--exclude", "output*",
+            "./computing/",
+            f"{user}@{host}:~/{project_name}"
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+    time.sleep(2)
+    
+    if result.returncode == 0:
+        spinner.succeed(f"   Upload computing/ to {project_name} in {host} completed.")
+    else:
+        spinner.fail(f"   Upload to {host} failed.")
+        print("   Closing SSH master connection...")
+    
 
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 #
@@ -645,6 +785,19 @@ def main():
         description="Launch FEMTIC inversion locally or in cluster mode."
     )
     # --------------------------------------------------
+    # UPLOAD
+    # --------------------------------------------------
+    download_parser = subparsers.add_parser(
+        "upload",
+        help="Upload computing/ folder contents to cluster into <project_name>/",
+        description="Establish a ssh conexion to create a folder called <project_name> then by rsync upload files to cluster."
+    )
+    # download_parser.add_argument(
+    #     "jobs",
+    #     nargs="+",
+    #     help="Job prefixes to download (e.g. job_284 job_293 job_301)"
+    # )
+    # --------------------------------------------------
     # DOWNLOAD
     # --------------------------------------------------
     download_parser = subparsers.add_parser(
@@ -716,6 +869,9 @@ def main():
     elif args.command == "run":
         config = read_config()
         run_inversion(config)
+
+    elif args.command == "upload":
+        run_upload()
 
     elif args.command == "download":
         run_download(args)
