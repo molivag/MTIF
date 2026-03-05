@@ -666,6 +666,20 @@ def run_new(project_name):
         has_sea = false
         sea_level = 0.0
         
+        [mesh.surface]
+        core_radius_padding = 5.0   # Margen extra sobre el radio de los sites (km)
+        boundary_resolution = 20.0  # Tamaño máximo de triángulo en el borde (km)
+        core_resolution = 0.5       # len en el centro (km)
+        growth_factor = 3.0         # Cuánto aumenta 'len' en cada elipse hacia afuera
+        levels = 3                  # Número de elipses en control.dat
+        
+        [mesh.sites]
+        num_spheres = 5
+        min_radius = 0.1            # Primera esfera (km)
+        max_radius = 5.0            # Última esfera (km)
+        min_edge = 0.02             # Resolución más fina (20m)
+        # El 'max_edge' lo tomará automáticamente de mesh.surface.core_resolution
+
         # ---- Refinement ----
         tet_refinement = x
         
