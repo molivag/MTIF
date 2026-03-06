@@ -1,0 +1,17 @@
+README.md
+pyproject.toml
+src/mtif/__init__.py
+src/mtif/cli.py
+src/mtif/config.py
+src/mtif/createNew.py
+src/mtif/download.py
+src/mtif/install.py
+src/mtif/meshing.py
+src/mtif/postprocessing.py
+src/mtif/runInversion.py
+src/mtif/upload.py
+src/mtif.egg-info/PKG-INFO
+src/mtif.egg-info/SOURCES.txt
+src/mtif.egg-info/dependency_links.txt
+src/mtif.egg-info/entry_points.txt
+src/mtif.egg-info/top_level.txt

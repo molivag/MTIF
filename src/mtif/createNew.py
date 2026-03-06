@@ -56,6 +56,9 @@ def run_new(project_name):
         # ---- Sea ----
         has_sea = false
         sea_level = 0.0
+
+        # ---- Refinement ----
+        tet_refinement = x
         
         [mesh.surface]
         core_radius_padding = 5.0   # Margen extra sobre el radio de los sites (km)
@@ -71,8 +74,6 @@ def run_new(project_name):
         min_edge = 0.02             # Resolución más fina (20m)
         # El 'max_edge' lo tomará automáticamente de mesh.surface.core_resolution
 
-        # ---- Refinement ----
-        tet_refinement = x
         
         # ------------------------
         # Postprocessing

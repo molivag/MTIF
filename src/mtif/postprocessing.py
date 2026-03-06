@@ -1,5 +1,5 @@
 from mtif.config import read_config
-import subprocess
+from mtif.tools.MTpostprocess import run
 
 #-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
 #
@@ -35,12 +35,6 @@ def run_post(args):
     print("   Sites:", sites)
     print("   Mode:", mode)
 
-    cmd = ["./bin/MTpostprocess.py", results_path, st_arg, ip_arg, xaxis ] 
+    run(results_path,st_arg,ip_arg,xaxis)
 
-    # mode = str(mode)
-    if mode != "none":
-      cmd.append(mode)
-
-
-    subprocess.run(cmd, check=True)
 
