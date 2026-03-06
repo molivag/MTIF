@@ -533,7 +533,6 @@ def run_upload():
             "-az",
             "-e", f"ssh {' '.join(ssh_opts)}",
             "--exclude", "*.log",
-            "--exclude", "output*",
             "./computing/",
             f"{user}@{host}:~/{project_name}"
         ],
