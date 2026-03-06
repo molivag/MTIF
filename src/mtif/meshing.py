@@ -1,5 +1,6 @@
 from mtif.config import read_config
 from mtif.config import update_meshtran_io_from_toml
+from mtif.tools.check_domain import run
 import subprocess
 import sys
 import os
@@ -15,16 +16,16 @@ def run_mesh(args):
         target_path = os.path.join("bin", "check_domain.py")
         if os.path.exists(target_path):
             print("     == Checking mesh geometry ==")
-            subprocess.run(["python3", "bin/check_domain.py"], check=True)
+            run()
         else:
-            print("plot_inputs.py not found.")
+            print("check_domain.py not found.")
         return   # <-- IMPORTANTE (sale de la función)
 
-
-    target_path = os.path.join( "preprocessing", "buildMesh", "reindexing_tetgen.py")
-    if not os.path.exists(target_path):
-        print(f"ERROR: reindexing_tetgen.py not found at {target_path}")
-        sys.exit(1)
+    # target_path = os.path.join( "preprocessing", "buildMesh", "reindexing_tetgen.py")
+    # if not os.path.exists(target_path):
+    #     print(f"ERROR: reindexing_tetgen.py not found at {target_path}")
+    #     sys.exit(1)
+    #
 
     if not os.path.exists("bin/set_meshtran.io"):
         print("ERROR: set_meshtran.io not found.")
@@ -42,6 +43,3 @@ def run_mesh(args):
     print("     == Running meshTran ==")
     subprocess.run(["bin/meshTranPreprocessing"], check=True)
 
-    # if os.path.exists("plot_inputs.py"):
-    #     print("== Plotting input geometry ==")
-    #     subprocess.run(["python3", "plot_inputs.py"], check=True)

@@ -29,7 +29,7 @@ def update_meshtran_io_from_toml(config,mesh_type):
         "PAD_Y": mesh_cfg["pad_y"],
         "HAS_SEA":"YES" if mesh_cfg["has_sea"]else "NO",
         "SEA_LEVEL": mesh_cfg["sea_level"],
-        "TET_REFINEMENT": mesh_cfg["tet_refinement"],
+        "ITER_TET_REFI": mesh_cfg["tet_refinement"],
         "TOPO_FILE": mesh_cfg["topo_file"],
         "BATHY_FILE": mesh_cfg["bathy_file"],
         "COSLI_FILE": mesh_cfg["coast_file"],
