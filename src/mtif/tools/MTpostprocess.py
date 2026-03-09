@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plot
 import matplotlib.gridspec as gridspec
+from scipy.interpolate import griddata
 from matplotlib.lines import Line2D
 import glob
 import sys
@@ -18,22 +19,8 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
         plot_x_axis = post_options
         post_options = None
     
-    # coord="../PREprocessing/MeshTranFemtic/input_data/geometry/sites_coord_elev.dat"
-    # df_coord = pd.read_csv (coord,sep=r'\s+')
-    # =========================
-    # 0) CONFIGURACIÓN DESDE TERMINAL
-    # =========================
-    
-    # if len(sys.argv) != 6:
-    #     print("Uso: ./MTpostprocess.py <path_to_results> <siteM-N> <flag> <ipX-M> <flag2>")
-    #     print(" flag: ")
-    #     print("     * rhoph: Write Re and Im components of Impedance Tensor")
-    #     print("     * impz:  Write Re and Im components of Impedance Tensor")
-    #     print(" flag2: ")
-    #     print("     * freq:     Plot a loglog data against frequency")
-    #     print("     * period:   Plot a log10 period in x axis")
-    #     print("Ejemplo: ./global_check.py test_data_No_Topo/pureOpenMP site1-4")
-    #     sys.exit(1)
+    print(post_options)
+
     
     # =======================
     # 2) ARGUMENTO DE STES
@@ -76,7 +63,6 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     except:
         print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
         sys.exit(1)
-    
     iters = iters+1
     
     
@@ -95,18 +81,19 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
         print("→ Ejecutando mergeResult para Rhooa and phase optionp...")
         # ╰─❯ mergeResult 0 2 -appphs ; sleep 1 ; mv result_MT.csv result_rho_phase_iter0.csv
         for ii in range(iters):
-            print(' ')
+
             print("iteracion",ii)
             os.system(f"cd {results_path} && mergeResult {ii} {procs} -appphs && sleep 0.5")
             os.system(f"cd {results_path} && mv result_MT.txt result_rho_phase_iter{ii}.txt ")
             os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
+            print(f'esto es la iteracion {ii}')
     # elif post_options == "None":
-    elif post_options is None:
-        print(f"Preprocessing option '{post_options}' selected .") 
-        print("Not merging results")
+    elif post_options == "none":
+        print(f"Preprocessing option '{post_options}' selected.") 
+        print("Results already merged")
     
     else:
-        print(f"❌❌ ❌ ❌ ❌  Preprocessing option '{post_options}' not defined.") 
+        print(f"❌ ❌ ❌ ❌ ❌  Preprocessing option '{post_options}' not defined.") 
         print("Opciones válidas: Z, rhoph or none")
         sys.exit(1)
     
@@ -158,6 +145,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
         dfRHOPHASE.columns = dfRHOPHASE.columns.str.strip() # --> trim espacios
         rhoph_iter[numero] = dfRHOPHASE
     
+
     #Mis tres diccionarios
     ## z_iter ; rms_iter ; rhoph_iter
     
@@ -173,9 +161,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     #       Site     #Data            RMS
     
     n_sites = len(sites)
-    # site=sites[0]
-    last_it = 5
-    # site = rhoph_iter[0]["Site"]==1
+    last_it = iters-1    #       ---> aqui le quitamos el + 1 del range agregado al inicio
     
     
     #Definimos la frecuencia
@@ -287,7 +273,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
                 if plot_x_axis == 'freq':
                     ax_phi.set_xlabel("Frequency (Hz)",fontsize=9)
                 else:
-                    ax_phi.set_xlabel(r"$\log_{10}$ $\left[Period\ (sec) \right]$ ",fontsize=9)
+                    ax_phi.set_xlabel(r"$\log_{10}$ $\left[Period \right] (sec)$ ",fontsize=9)
     
     
             # Etiqueta del componente en la esquina
@@ -360,6 +346,11 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     plot.xticks(range(int(sites_plot.min()),int(sites_plot.max())+1,2))
     plot.show()
     
+
+
+
+
+
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
