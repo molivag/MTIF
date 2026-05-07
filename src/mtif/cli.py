@@ -143,6 +143,14 @@ def main():
         "--sites",
         help="Site range (e.g., 1-10)"
     )
+
+    post_parser.add_argument(
+    "--comp",
+    nargs="+",                    # acepta uno o más valores
+    choices=["xx", "xy", "yx", "yy"],
+    default=["xy", "yx"],         # default si no se pasa nada
+    help="Componentes a plotear (e.g. --comp xy yx)"
+    )
     
     post_parser.add_argument(
         "--mode",
