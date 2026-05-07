@@ -2,8 +2,10 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plot
 import matplotlib.gridspec as gridspec
+from pyarrow import string
 from scipy.interpolate import griddata
 from matplotlib.lines import Line2D
+import matplotlib.ticker as ticker
 import glob
 import sys
 import os
@@ -11,15 +13,15 @@ import os
 
 import argparse
 
-def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
+def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
     
     
+    BASE_DIR = os.getcwd()
     # Si solo hay 3 argumentos totales: path st1-3 freq
     if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
         plot_x_axis = post_options
         post_options = None
     
-    print(post_options)
 
     
     # =======================
@@ -68,7 +70,6 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     
     #Ahora iters y procs representan los argumentos para mergeResulst
     
-    print(post_options)
     if post_options == "impz":
         print("→ Ejecutando mergeResult para impedance tensor option...")
         for ii in range(iters):
@@ -112,6 +113,11 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     PATTERN_MT = os.path.join(results_path, "result_impedance_iter*.csv")  # ejemplo: result_MT_iter05.csv
     PATTERN_RMS = os.path.join(results_path, "RMS_iter*.out")  # ejemplo: result_MT_iter05.csv
     PATTERN_RHOPH = os.path.join(results_path, "result_rho_phase_iter*.txt")  # ejemplo: result_MT_iter05.csv
+    PATTERN_STATS = os.path.join(results_path, "femtic.cnv")  # ejemplo: result_MT_iter05.csv
+    coord_path = os.path.join(BASE_DIR,"preprocessing","geometry","sites_coord_elev.dat")
+    coast_path = os.path.join(BASE_DIR,"preprocessing","geometry","coast_line.dat")
+    domain_path = os.path.join(BASE_DIR,"preprocessing","geometry","analysis_domain.dat")
+    # dominio del modelo
     
     
     
@@ -145,9 +151,20 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
         dfRHOPHASE.columns = dfRHOPHASE.columns.str.strip() # --> trim espacios
         rhoph_iter[numero] = dfRHOPHASE
     
-
     #Mis tres diccionarios
     ## z_iter ; rms_iter ; rhoph_iter
+
+    sitesRMS = pd.read_csv(coord_path,sep=r'\s+', header=None)
+    sitesRMS = sitesRMS.iloc[:,0:3]
+    sitesRMS.columns = ["SiteName","X","Y"]
+    #adding an extra column to be able the merge with RMS file data
+    sitesRMS["Site"] = np.arange(1,len(sitesRMS)+1)
+
+    coast      = np.loadtxt(coast_path, skiprows=1)
+    domain = np.loadtxt( domain_path )
+
+    run_statistics = pd.read_csv(PATTERN_STATS, sep=r'\s+',usecols=[0,4,6])
+
     
     
     #Site,Frequency,
@@ -162,6 +179,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     
     n_sites = len(sites)
     last_it = iters-1    #       ---> aqui le quitamos el + 1 del range agregado al inicio
+    print(f"DEBUG: iters={iters}, last_it={last_it}")  # ← añade esta línea
     
     
     #Definimos la frecuencia
@@ -185,14 +203,22 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     # phase_cal = rhoph_iter[last_it][site]["PhsxyCal"]
     #
     
+
+    if components is None:
+        component_names = ["xy", "yx"]  # default
+    else:
+        component_names = components
     
+
     #Las figuras Rho and Ph vs freq Obs y Cal en 4 componentes
     fig = plot.figure(figsize=(4*n_sites, 12))
     fig.suptitle(rf"Respuesta calculada vs observada", fontsize=16, y=0.95)
     
+    n_comp = len(component_names)
     # Grid exterior: 4 componentes × n_sites
     outer = gridspec.GridSpec(
-        4, n_sites,
+        # 4, n_sites,
+        n_comp, n_sites,
         hspace=0.35,   # espacio entre componentes
         wspace=0.3
     )
@@ -211,7 +237,9 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
             
             
     
-    component_names = ["xx", "xy", "yx", "yy"]
+    # component_names = ["xx", "xy", "yx", "yy"]
+
+    # component_names = ["xy", "yx",]
     
     for i, comp in enumerate(component_names):     # componentes
         for j, site in enumerate(sites):           # sites
@@ -234,6 +262,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     
             rho_obs = rhoph_iter[last_it][mask][f"AppR{comp}Obs"]
             phase_obs = rhoph_iter[last_it][mask][f"Phs{comp}Obs"]
+
             #- - - 
             rho_cal = rhoph_iter[last_it][mask][f"AppR{comp}Cal"]
             phase_cal = rhoph_iter[last_it][mask][f"Phs{comp}Cal"]
@@ -243,12 +272,14 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
                     # ---- Rho ----
                     ax_rho.loglog(axis_x, rho_obs, 'ok', markersize=3)
                     ax_rho.loglog(axis_x, rho_cal, '--', color='darkcyan', linewidth=1.25)
+
                     ax_rho.tick_params(labelbottom=False)
     
                     # ---- Phase ----
                     ax_phi.semilogx(axis_x, phase_obs, 'xk', markersize=3)
                     ax_phi.semilogx(axis_x, phase_cal, '--', color='crimson', linewidth=1.25)
                     # ax_phi.set_ylim(-80, -20)
+
                 case "period":
                     # ---- Rho ----
                     ax_rho.semilogy(axis_x, rho_obs, 'ok', markersize=3)
@@ -257,8 +288,9 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     
                     # ---- Phase ----
                     ax_phi.plot(axis_x, phase_obs, 'xk', markersize=3)
+
                     ax_phi.plot(axis_x, phase_cal, '--', color='crimson' , linewidth=1.25)
-                    # ax_phi.set_ylim(-80, -20)
+                    # ax_phi.set_ylim(-180, 180)
     
             if j == 0:
                 ax_rho.set_ylabel(r"$\rho_{_a}$ $\left[\Omega · m \right]$",fontsize=10)
@@ -284,16 +316,17 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
                ha='right',
                fontsize=12,
                fontweight='bold',
-               color='blue'
-           )
+               color='blue')
     
     legend_elements = [
         Line2D([0], [0], marker='o', color='k', linestyle='None',
                label=r'Obs $\rho_a$'),
         Line2D([0], [0], marker='*', color='k', linestyle='None',
                label=r'Obs $\phi$'),
-        Line2D([0], [0], color='r', linestyle='--',
-               label=rf'Calc. Iteration {last_it}')
+        Line2D([0], [0], color='crimson', linestyle='--',
+               label=rf'$\rho_a$ Calc. Iteration {last_it}'),
+        Line2D([0], [0], color='darkcyan', linestyle='--',
+               label=rf'$\phi$ Calc. Iteration {last_it}')
     ]
     
     fig.legend(
@@ -303,11 +336,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
         frameon=False,
         bbox_to_anchor=(0.76, 0.05)
     )
-    
-    
-    
-    
-    
+
     rms_global=np.zeros(len(archivos_MT))
     for j in range(len(archivos_MT)):
         rms_global[j] = np.sqrt(np.mean(rms_iter[j]["RMS"])**2)
@@ -344,8 +373,13 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None):
     plot.grid(True,alpha=0.3)
     plot.axhline(1, color='r', linestyle='--', alpha=0.5)
     plot.xticks(range(int(sites_plot.min()),int(sites_plot.max())+1,2))
-    plot.show()
+    # plot.show()
     
+
+
+
+
+
 
 
 
