@@ -14,8 +14,10 @@ def run_post(args):
     job = args.job if args.job else post_cfg["last_job"]
     sites = args.sites if args.sites else post_cfg["default_sites"]
     iters = args.iter if args.iter else post_cfg["default_iter"]
+    # iters = args.iter if args.iter is not None else post_cfg["default_iter"]
     procs = args.proc if args.proc else post_cfg["default_proc"]
     xaxis = args.axis if args.axis else post_cfg["default_axis"]
+    comp = args.comp if args.comp else ["xy", "yx"]
 
     
     if args.mode is not None:
@@ -35,6 +37,7 @@ def run_post(args):
     print("   Sites:", sites)
     print("   Mode:", mode)
 
-    run(results_path,st_arg,ip_arg,xaxis)
+    # run(results_path,st_arg,ip_arg,xaxis, mode)
+    run(results_path, st_arg, ip_arg, xaxis, mode, comp)
 
 
