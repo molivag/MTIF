@@ -12,6 +12,7 @@ bin/
 
 # Python
 __pycache__/
+*.egg-info/
 *.pyc
 
 # Notebooks
