@@ -1,4 +1,7 @@
 from pathlib import Path
+from halo import Halo
+import subprocess
+import time
 import sys
 import os
 
@@ -49,35 +52,13 @@ def run_upload():
          f"mkdir -p ~/{project_name}"],
         check=True
     )
-    # subprocess.run([
-    #     "rsync",
-    #     "-avz",
-    #     "-e", f"ssh {' '.join(ssh_opts)}",
-    #     "--exclude", "*.log",
-    #     "--exclude", "output*",
-    #     "./computing/",
-    #     f"{user}@{host}:~/{project_name}"
-    # ], check=True)
-
-    # remote_path = f"{user}@{host}:~/{project_name}"
-    
-    # subprocess.run(
-    #     [
-    #         "rsync",
-    #         "-avz",
-    #         "-e", f"ssh {' '.join(ssh_opts)}",
-    #         "--exclude", "*.log",
-    #         "--exclude", "output*",
-    #         "./computing/",
-    #         f"{user}@{host}:~/{project_name}/computing/"
-    #     ],
-    #     check=True
-    # )
     print()  # pequeño espacio visual
 
     spinner = Halo(
         text=f"   Uploading computing/ to {host}...",
-        spinner="dots"
+        spinner="shark",
+        placement="right",
+        color="green"
     )
     spinner.start()
     
