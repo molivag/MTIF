@@ -39,6 +39,7 @@ def rsync_with_progress(user, host, remote_path, local_path, ssh_opts, job_name)
         "-az",
         "--info=progress2",
         "--no-human-readable",
+        # "--no-inc-recursive",   # fuerza escaneo completo antes de transferir
         "-e",
         f"ssh {' '.join(ssh_opts)}",
         f"{user}@{host}:{remote_path}/",
