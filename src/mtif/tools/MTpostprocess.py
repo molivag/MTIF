@@ -372,9 +372,167 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     plot.title(f"RMS per Site for Iter {last_iter}")
     plot.grid(True,alpha=0.3)
     plot.axhline(1, color='r', linestyle='--', alpha=0.5)
-    plot.xticks(range(int(sites_plot.min()),int(sites_plot.max())+1,2))
+    plot.xticks(range(int(sites_plot.min()),int(sites_plot.max())+1,3))
     # plot.show()
     
+
+
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    #
+    # plot the coordinate map with RMS error in each station
+    #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+    # =====================================================
+    # 1) LEER COORDENADAS DE ESTACIONES
+    # =====================================================
+    
+    
+    # Ahora 'sites' contiene:
+    # Site | X | Y
+    
+    
+    # =====================================================
+    # 2) LEER RMS DE LA ITERACION
+    # =====================================================
+    # rms_table ya lo tienes en memoria o leído desde FEMTIC
+    # debe tener columnas:
+    # Site | #Data | RMS
+    
+    # rms_selected = rms_iter[last_it]
+    # rms_df = rms_selected[["Site","RMS"]]
+
+
+    rms_selected = rms_iter[last_it]
+    rms_df = rms_selected[["Site", "RMS"]].copy()  # .copy() para no modificar el diccionario original
+    rms_df["Site"] = pd.to_numeric(rms_df["Site"], errors="coerce")  # convierte texto a número, y "Total" → NaN
+    rms_df = rms_df.dropna(subset=["Site"])  # elimina la fila donde Site es NaN (la fila "Total")
+    
+    # =====================================================
+    # 3) UNIR RMS CON COORDENADAS
+    # =====================================================
+    data = pd.merge(sitesRMS, rms_df, on="Site")
+    # Ahora data tiene:
+    # Site | SiteName | X | Y | RMS
+    
+    
+    # =====================================================
+    # 4) CREAR GRID REGULAR DE INTERPOLACION
+    # =====================================================
+    x = data["Y"].to_numpy()
+    y = data["X"].to_numpy()
+    z = data["RMS"].to_numpy()
+    
+    
+    xmin, xmax = domain[1]
+    ymin, ymax = domain[0]
+    
+    nx, ny = 300, 300
+    
+    xi = np.linspace(xmin, xmax, nx)
+    yi = np.linspace(ymin, ymax, ny)
+    
+    Xi, Yi = np.meshgrid(xi, yi)
+    
+    
+    # =====================================================
+    # 5) INTERPOLAR RMS EN EL GRID
+    # =====================================================
+    Zi = griddata(
+        points=(x, y),
+        values=z,
+        xi=(Xi, Yi),
+        method="cubic"      # opciones: 'linear', 'nearest'
+    )
+    
+    
+    # =====================================================
+    # 6) PLOT DEL HEATMAP
+    # =====================================================
+    plot.figure(figsize=(8,10))
+    
+    plot.contourf(Xi,Yi, Zi, levels=20, cmap="afmhot_r")
+
+    # Dibujar estaciones encima
+    cont = plot.scatter(x,y,c=z, edgecolor="k",
+        cmap="afmhot_r"
+    )
+    cbar = plot.colorbar(cont)
+    cbar.set_label("RMS", fontsize=14)
+    
+    # Etiquetar algunas estaciones
+    for _, row in data.iloc[::7].iterrows():
+    
+        plot.text(
+            float(row["Y"]),
+            float(row["X"]),
+            fr"$\mathbf{{{row['Site']}}}$",
+            # row["SiteName"],
+            fontsize=10,
+            ha="center",
+            va="top",
+            color="#15b01A"
+        )
+    
+    
+    plot.xlabel("East [km]")
+    plot.ylabel("North [km]")
+    plot.title(f"RMS Map - Iter {last_iter}")
+    
+
+    plot.tight_layout()
+    # Coastline
+    plot.plot(coast[:,1], coast[:,0], 'r')
+
+    plot.xlim(xmin, xmax)
+    plot.ylim(ymin, ymax)
+
+
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    #
+    # plot the coordinate heat map with RMS error in each station
+    #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    roughness = run_statistics["Roughness"]
+    iterations = run_statistics["Iter#"]
+    globRMS = run_statistics["RMS"]
+    
+    # fig ,ax1 = plot.subplots()
+    # el área del plot termina al 82 % del ancho de la figura,
+    # fig.subplots_adjust(right=0.82)
+    fig, ax1 = plot.subplots(constrained_layout=True)
+
+
+
+    ax2 = ax1.twinx()
+    ax1.plot(iterations,globRMS, '-o', color='#15b01A')  
+    ax2.plot(iterations,roughness, 'r-o')  
+
+    ax1.set_xlabel('Iteration')
+    ax1.set_ylabel('RMS', color='g')
+    ax1.tick_params(axis='y', labelcolor='#15b01A')
+
+    ax2.tick_params(axis='y', labelcolor='red')
+    ax2.set_ylabel('Roughness', color='r')
+
+    ax1.grid(axis='x', linestyle='--', alpha=0.5)
+
+    plot.xticks(range(inicio, fin, 1))
+
+
+    plot.show()
+
+
+
+
+
+
+
+
+
 
 
 
