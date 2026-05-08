@@ -13,13 +13,14 @@ import os
 def run_mesh(args):
 # --- MODO CHECK ---
     if args.check:
-        target_path = os.path.join("bin", "check_domain.py")
-        if os.path.exists(target_path):
-            print("     == Checking mesh geometry ==")
-            run()
-        else:
-            print("check_domain.py not found.")
-        return   # <-- IMPORTANTE (sale de la función)
+        # target_path = os.path.join("mtif/tools", "check_domain.py")
+        # if os.path.exists(target_path):
+        print("     == Checking mesh geometry ==")
+        run()
+        sys.exit()
+        # else:
+            # print("check_domain.py not found.")
+        # return   # <-- IMPORTANTE (sale de la función)
 
     # target_path = os.path.join( "preprocessing", "buildMesh", "reindexing_tetgen.py")
     # if not os.path.exists(target_path):
@@ -27,10 +28,10 @@ def run_mesh(args):
     #     sys.exit(1)
     #
 
-    if not os.path.exists("bin/set_meshtran.io"):
+    if not os.path.exists("./set_meshtran.io"):
         print("ERROR: set_meshtran.io not found.")
         sys.exit(1)
-
+    #
 
     config = read_config()
     mesh_cfg = config["mesh"]
@@ -41,5 +42,5 @@ def run_mesh(args):
     update_meshtran_io_from_toml(config, mesh_type)
     
     print("     == Running meshTran ==")
-    subprocess.run(["bin/meshTranPreprocessing"], check=True)
+    subprocess.run(["bin/meshTran"], check=True)
 
