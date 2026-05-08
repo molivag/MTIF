@@ -5,8 +5,8 @@ import os
 
 def run():
     # ---------- CARGA DATOS ----------
-    # UTM
     BASE_DIR = os.getcwd()
+    # UTM
     dem_path = os.path.join(BASE_DIR,"preprocessing","PlotWithPython","dem_utm_km.dat")
     sites_path = os.path.join(BASE_DIR,"preprocessing","PlotWithPython","sites_utm_km.dat")
     maya_path = os.path.join(BASE_DIR,"preprocessing","geometry","topography_for.dat")
@@ -28,7 +28,7 @@ def run():
     
     
     resample = 1            # <-- aquí cambias 3, 5, 10, etc.
-    ms = 8                  # marker size sites
+    ms = 30                  # marker size sites
     # ---------------------------
     
     
@@ -40,7 +40,7 @@ def run():
     # SUBPLOT 1 — UTM
     # ===============================
     ax = axs[0]
-    ax.scatter(dem_utm[::resample,1], dem_utm[::resample,0],  s=0.5)
+    ax.scatter(dem_utm[::resample,1], dem_utm[::resample,0],  s=5)
     
     ax.scatter(sites_utm[:,1],
                sites_utm[:,0],
@@ -62,10 +62,11 @@ def run():
     sc = ax.scatter(dem_maya[::resample,1],
                     dem_maya[::resample,0],
                     c=dem_maya[::resample,2],   # <-- z
-                    cmap='terrain',
+                    # cmap='terrain',
+                    cmap='gist_earth',
                     vmin=-10,
                     vmax=10,
-                    s=1)
+                    s=5)
     
     fig.colorbar(sc, ax=ax, label="Elevation (m)")
     
