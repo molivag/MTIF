@@ -262,6 +262,8 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     
             rho_obs = rhoph_iter[last_it][mask][f"AppR{comp}Obs"]
             phase_obs = rhoph_iter[last_it][mask][f"Phs{comp}Obs"]
+            rho_err = rhoph_iter[last_it][mask][f"AppR{comp}Err"]
+            phs_err = rhoph_iter[last_it][mask][f"Phs{comp}Err"]
 
             #- - - 
             rho_cal = rhoph_iter[last_it][mask][f"AppR{comp}Cal"]
@@ -270,25 +272,76 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
             match plot_x_axis:
                 case "freq":
                     # ---- Rho ----
-                    ax_rho.loglog(axis_x, rho_obs, 'ok', markersize=3)
-                    ax_rho.loglog(axis_x, rho_cal, '--', color='darkcyan', linewidth=1.25)
+                    ax_rho.errorbar(axis_x, rho_obs, 
+                                    yerr=rho_err,
+                                    fmt='og',
+                                    markersize=4,
+                                    capsize=4,
+                                    elinewidth=1.0,
+                                    markeredgewidth=1.0,
+                                    alpha=0.7)
 
+                    ax_rho.plot(axis_x, rho_cal, '--', color='darkcyan', linewidth=1.5)
                     ax_rho.tick_params(labelbottom=False)
+                    # ax_rho.set_xscale('log')
+                    ax_rho.set_yscale('log')
+                    ax_rho.set_ylim(1, 1000)
+                    # ax_rho.set_xlim(0.5e-3, 1.5e3)
+                    ax_rho.set_xlim(1.5e4, 0.5e-4) #de altas a bajas frecuencias
+                    ax_rho.grid(axis='x', linestyle='--', alpha=0.5)
+                    ax_rho.grid(axis='y', linestyle='--', alpha=0.5)
     
                     # ---- Phase ----
-                    ax_phi.semilogx(axis_x, phase_obs, 'xk', markersize=3)
-                    ax_phi.semilogx(axis_x, phase_cal, '--', color='crimson', linewidth=1.25)
-                    # ax_phi.set_ylim(-80, -20)
+                    ax_phi.errorbar(axis_x, phase_obs,
+                                    yerr=phs_err,
+                                    fmt='xr', 
+                                    markersize=4, 
+                                    capsize=4, 
+                                    elinewidth=1.0, 
+                                    markeredgewidth=1.0,
+                                    alpha=0.7)
+
+                    # ax_phi.plot(axis_x, phase_cal, '--', color='crimson' , linewidth=1.25)
+                    # ax_phi.semilogx(axis_x, phase_obs, 'xk', markersize=3)
+                    ax_phi.semilogx(axis_x, phase_cal, '--', color='crimson', linewidth=1.5)
+                    ax_phi.set_ylim(-180, 180)
+                    ax_phi.grid(axis='x', linestyle='--', alpha=0.5)
+                    ax_phi.grid(axis='y', linestyle='--', alpha=0.5)
+
+                    # if comp in ["xy"]:
+                    #     # ← Añade esto:
+                    #     ax_phi.axhline(-45,  color='plum', linewidth=0.9, linestyle='-', alpha=0.8)
+                    #
+                    # if comp in ["yx"]:
+                    #     ax_phi.axhline(135,  color='maroon', linewidth=0.9, linestyle='-', alpha=0.8)
 
                 case "period":
+                    # Si el error es más de 10 veces el dato, podrías opacar la barra
+                    # alpha_val = 1.0 if (rho_err.mean() < rho_obs.mean() * 2) else 0.4
+                    # ax_rho.errorbar(axis_x, rho_obs, yerr=rho_err, fmt='ok', alpha=alpha_val)
                     # ---- Rho ----
-                    ax_rho.semilogy(axis_x, rho_obs, 'ok', markersize=3)
-                    ax_rho.semilogy(axis_x, rho_cal, '--', color='darkcyan', linewidth=1.25)
+                    ax_rho.errorbar(axis_x, rho_obs,
+                                    yerr=rho_err,
+                                    fmt='ok',
+                                    markersize=3,
+                                    capsize=3,
+                                    elinewidth=0.8,
+                                    markeredgewidth=0.8,
+                                    alpha=0.7)
+                    ax_rho.plot(axis_x, rho_cal, '--', color='darkcyan', linewidth=1.25)
                     ax_rho.tick_params(labelbottom=False)
+                    ax_rho.set_yscale('log')
+                    # ax_rho.set_ylim(1, 1000)
     
                     # ---- Phase ----
-                    ax_phi.plot(axis_x, phase_obs, 'xk', markersize=3)
-
+                    ax_phi.errorbar(axis_x, phase_obs,
+                                    yerr=phs_err,
+                                    fmt='xk', 
+                                    markersize=3, 
+                                    capsize=3, 
+                                    elinewidth=0.8, 
+                                    markeredgewidth=0.8,
+                                    alpha=0.7)
                     ax_phi.plot(axis_x, phase_cal, '--', color='crimson' , linewidth=1.25)
                     # ax_phi.set_ylim(-180, 180)
     
@@ -331,11 +384,16 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     
     fig.legend(
         handles=legend_elements,
+        handletextpad=0.1,  # <--- ESTO reduce el espacio entre el símbolo y el texto
+        handlelength=1.5,   # Reduce el largo del área del símbolo
         loc='upper center',
-        ncol=3,
+        ncol=4,
         frameon=False,
         bbox_to_anchor=(0.76, 0.05)
     )
+    tot = range(iters)
+    inicio = tot[0]
+    fin = tot[-1]
 
     rms_global=np.zeros(len(archivos_MT))
     for j in range(len(archivos_MT)):
@@ -346,6 +404,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     plot.xlabel("Iterations")
     plot.ylabel("Global RMS")
     plot.grid(True,which="both")
+    plot.xticks(range(inicio, fin, 1))
     # plot.show()
     
     
