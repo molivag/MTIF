@@ -315,6 +315,16 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
                     # if comp in ["yx"]:
                     #     ax_phi.axhline(135,  color='maroon', linewidth=0.9, linestyle='-', alpha=0.8)
 
+
+
+
+
+
+
+
+
+
+
                 case "period":
                     # Si el error es más de 10 veces el dato, podrías opacar la barra
                     # alpha_val = 1.0 if (rho_err.mean() < rho_obs.mean() * 2) else 0.4
