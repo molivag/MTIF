@@ -5,6 +5,7 @@ from mtif.config import read_config
 from mtif.createNew import run_new
 from mtif.download import run_download
 from mtif.install import run_install
+from mtif.doctor import run_doctor
 from mtif.meshing import run_mesh
 from mtif.postprocessing import run_post 
 from mtif.runInversion import run_inversion
@@ -68,6 +69,15 @@ def main():
         description="Clone and compile required tools such as FEMTIC and TetGen."
     )
     
+    # --------------------------------------------------
+    # DOCTOR
+    # --------------------------------------------------
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Check dependencies",
+        description="Execute a complete checker of dependencies and version installed."
+    )
+
     # --------------------------------------------------
     # MESH
     # --------------------------------------------------
@@ -183,6 +193,9 @@ def main():
 
     elif args.command == "install":
         run_install()
+
+    elif args.command == "doctor":
+        run_doctor()
 
     elif args.command == "mesh":
         run_mesh(args)
