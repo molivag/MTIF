@@ -55,6 +55,61 @@ def parse_sites(sites_arg):
     return sites
 
 
+def build_postprocessing_paths(results_path):
+    #     # Si tus archivos merged se llaman distinto, ajusta esto:
+    # PATTERN_MT = os.path.join(results_path, "result_impedance_iter*.csv")  # ejemplo: result_MT_iter05.csv
+    # PATTERN_RMS = os.path.join(results_path, "RMS_iter*.out")  # ejemplo: result_MT_iter05.csv
+    # PATTERN_RHOPH = os.path.join(results_path, "result_rho_phase_iter*.txt")  # ejemplo: result_MT_iter05.csv
+    # PATTERN_STATS = os.path.join(results_path, "femtic.cnv")  # ejemplo: result_MT_iter05.csv
+    # coord_path = os.path.join(BASE_DIR,"preprocessing","geometry","sites_coord_elev.dat")
+    # coast_path = os.path.join(BASE_DIR,"preprocessing","geometry","coast_line.dat")
+    # domain_path = os.path.join(BASE_DIR,"preprocessing","geometry","analysis_domain.dat")
+    # # dominio del modelo
+
+    BASE_DIR = os.getcwd()
+    paths = {
+
+        "mt_pattern":
+            os.path.join(results_path, "result_impedance_iter*.csv"),
+
+        "rms_pattern":
+            os.path.join(results_path, "RMS_iter*.out"),
+
+        "rhoph_pattern":
+            os.path.join(results_path, "result_rho_phase_iter*.txt"),
+
+        "stats_path":
+            os.path.join(results_path, "femtic.cnv"),
+
+        "coord_path":
+            os.path.join(
+                BASE_DIR,
+                "preprocessing",
+                "geometry",
+                "sites_coord_elev.dat"
+            ),
+
+        "coast_path":
+            os.path.join(
+                BASE_DIR,
+                "preprocessing",
+                "geometry",
+                "coast_line.dat"
+            ),
+
+        "domain_path":
+            os.path.join(
+                BASE_DIR,
+                "preprocessing",
+                "geometry",
+                "analysis_domain.dat"
+            ),
+
+    }
+
+    return paths
+
+
 
 def merge_impedance(results_path, iters, procs):
     print("→ Ejecutando mergeResult para impedance tensor option...")
@@ -87,7 +142,6 @@ def merge_rhoph(results_path, iters, procs):
 def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
     
     
-    BASE_DIR = os.getcwd()
     # Si solo hay 3 argumentos totales: path st1-3 freq
     if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
         plot_x_axis = post_options
@@ -173,21 +227,17 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     print(f"  \n     📂Leyendo resultados de: {results_path}")
     print(f"     📌Sites seleccionados: {sites}")
     
-    # Si tus archivos merged se llaman distinto, ajusta esto:
-    PATTERN_MT = os.path.join(results_path, "result_impedance_iter*.csv")  # ejemplo: result_MT_iter05.csv
-    PATTERN_RMS = os.path.join(results_path, "RMS_iter*.out")  # ejemplo: result_MT_iter05.csv
-    PATTERN_RHOPH = os.path.join(results_path, "result_rho_phase_iter*.txt")  # ejemplo: result_MT_iter05.csv
-    PATTERN_STATS = os.path.join(results_path, "femtic.cnv")  # ejemplo: result_MT_iter05.csv
-    coord_path = os.path.join(BASE_DIR,"preprocessing","geometry","sites_coord_elev.dat")
-    coast_path = os.path.join(BASE_DIR,"preprocessing","geometry","coast_line.dat")
-    domain_path = os.path.join(BASE_DIR,"preprocessing","geometry","analysis_domain.dat")
-    # dominio del modelo
     
+    paths = build_postprocessing_paths(results_path)
     
+    # archivos_MT = sorted(glob.glob(PATTERN_MT))
+    # archivos_RMS = sorted(glob.glob(PATTERN_RMS))
+    # archivos_RHOPHASE = sorted(glob.glob(PATTERN_RHOPH))
+
+    archivos_MT = sorted(glob.glob(paths["mt_pattern"]))
+    archivos_RMS = sorted(glob.glob(paths["rms_pattern"]))
+    archivos_RHOPHASE = sorted(glob.glob(paths["rhoph_pattern"]))
     
-    archivos_MT = sorted(glob.glob(PATTERN_MT))
-    archivos_RMS = sorted(glob.glob(PATTERN_RMS))
-    archivos_RHOPHASE = sorted(glob.glob(PATTERN_RHOPH))
     
     #Inicializo mi diccionario a  0
     z_iter = {}
@@ -218,16 +268,17 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     #Mis tres diccionarios
     ## z_iter ; rms_iter ; rhoph_iter
 
-    sitesRMS = pd.read_csv(coord_path,sep=r'\s+', header=None)
+    # sitesRMS = pd.read_csv(coord_path,sep=r'\s+', header=None)
+    sitesRMS = pd.read_csv(paths["coord_path"],sep=r'\s+', header=None)
     sitesRMS = sitesRMS.iloc[:,0:3]
     sitesRMS.columns = ["SiteName","X","Y"]
     #adding an extra column to be able the merge with RMS file data
     sitesRMS["Site"] = np.arange(1,len(sitesRMS)+1)
 
-    coast      = np.loadtxt(coast_path, skiprows=1)
-    domain = np.loadtxt( domain_path )
+    coast      = np.loadtxt(paths["coast_path"], skiprows=1)
+    domain = np.loadtxt(paths["domain_path"])
 
-    run_statistics = pd.read_csv(PATTERN_STATS, sep=r'\s+',usecols=[0,4,6])
+    run_statistics = pd.read_csv(paths["stats_path"] , sep=r'\s+',usecols=[0,4,6])
 
     
     
@@ -246,17 +297,20 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     print(f"DEBUG: iters={iters}, last_it={last_it}")  # ← añade esta línea
     
     
+
     #Definimos la frecuencia
-    if post_options == "impz":
-        freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-    
-    elif post_options == "rhoph":
-        freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-    
-    else: 
-        freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-        freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-        
+    freq = z_iter[last_it][z_iter[last_it]["Site"] == 1]["Frequency"]
+
+    # if post_options == "impz":
+    #     freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #
+    # elif post_options == "rhoph":
+    #     freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #
+    # else: 
+    #     freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #     freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #
         
 
     if components is None:
