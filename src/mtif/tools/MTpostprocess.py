@@ -13,43 +13,7 @@ import os
 
 import argparse
 
-def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
-    
-    
-    BASE_DIR = os.getcwd()
-    # Si solo hay 3 argumentos totales: path st1-3 freq
-    if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
-        plot_x_axis = post_options
-        post_options = None
-    
-
-    
-    # =======================
-    # 2) ARGUMENTO DE STES
-    # =========================
-    
-    if not sites_arg.startswith("st"):
-         print("Formato de sites incorrecto. Usa por ejemplo: st1-4")
-         sys.exit(1)
-    try:
-        rango = sites_arg[2:]           # quita "st"
-        inicio, fin = rango.split("-")  # separa 1 y 4
-        inicio = int(inicio)
-        fin = int(fin)
-    except:
-        print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
-        sys.exit(1)
-    
-    if inicio > fin:
-        print("El rango está invertido.")
-        sys.exit(1)
-    
-    sites = list(range(inicio, fin + 1))
-    
-    
-    # =======================
-    # 2) ARGUMENTO DE ITER and PROCESSES
-    # =========================
+def parse_iterproc(iterproc_arg):
     if iterproc_arg is None:
         print("Falta argumento ipX-M")
         sys.exit(1)
@@ -66,28 +30,128 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
         print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
         sys.exit(1)
     iters = iters+1
+
+    return iters, procs
+
+def parse_sites(sites_arg):
+    if not sites_arg.startswith("st"):
+        print("Formato de sites incorrecto. Usa por ejemplo: st1-4")
+        sys.exit(1)
+    try:
+        rango = sites_arg[2:]           # quita "st"
+        inicio, fin = rango.split("-")  # separa 1 y 4
+        inicio = int(inicio)
+        fin = int(fin)
+    except:
+        print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
+        sys.exit(1)
+    
+    if inicio > fin:
+        print("El rango está invertido.")
+        sys.exit(1)
+    
+    sites = list(range(inicio, fin + 1))
+
+    return sites
+
+
+
+def merge_impedance(results_path, iters, procs):
+    print("→ Ejecutando mergeResult para impedance tensor option...")
+    for ii in range(iters):
+        os.system(f"cd {results_path} && mergeResult {ii} {procs} -csv && sleep 0.5")
+        print('Continua iteracion: ',ii)
+        os.system(f"cd {results_path} && mv result_MT.csv result_impedance_iter{ii}.csv ")
+        os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
+
+
+def merge_rhoph(results_path, iters, procs):
+    print("→ Ejecutando mergeResult para Rhooa and phase optionp...")
+    # ╰─❯ mergeResult 0 2 -appphs ; sleep 1 ; mv result_MT.csv result_rho_phase_iter0.csv
+
+    for ii in range(iters):
+
+        print("iteracion",ii)
+        os.system(f"cd {results_path} && mergeResult {ii} {procs} -appphs && sleep 0.5")
+        os.system(f"cd {results_path} && mv result_MT.txt result_rho_phase_iter{ii}.txt ")
+        os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
+        print(f'esto es la iteracion {ii}')
+
+
+
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+# = = = = = =                   MAIN ROUTINE                = = = = = = = = = = = 
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
+    
+    
+    BASE_DIR = os.getcwd()
+    # Si solo hay 3 argumentos totales: path st1-3 freq
+    if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
+        plot_x_axis = post_options
+        post_options = None
+    
+
+    
+    # =======================
+    # 2) ARGUMENTO DE STES
+    # =========================
+    #
+    # if not sites_arg.startswith("st"):
+    #      print("Formato de sites incorrecto. Usa por ejemplo: st1-4")
+    #      sys.exit(1)
+    # try:
+    #     rango = sites_arg[2:]           # quita "st"
+    #     inicio, fin = rango.split("-")  # separa 1 y 4
+    #     inicio = int(inicio)
+    #     fin = int(fin)
+    # except:
+    #     print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
+    #     sys.exit(1)
+    #
+    # if inicio > fin:
+    #     print("El rango está invertido.")
+    #     sys.exit(1)
+    #
+    # sites = list(range(inicio, fin + 1))
+
+    sites = parse_sites(sites_arg)
+    
+    
+    # =======================
+    # 2) ARGUMENTO DE ITER and PROCESSES
+    # =========================
+    # if iterproc_arg is None:
+    #     print("Falta argumento ipX-M")
+    #     sys.exit(1)
+    # if not iterproc_arg.startswith("ip"):
+    #     print("Formato incorrecto en iter-proc. Ejemplo: ip11-4")
+    #     sys.exit(1)
+    #
+    # try:
+    #     rango = iterproc_arg[2:]        # quita "ip"
+    #     iters, procs = rango.split("-")  # separa X y M
+    #     iters = int(iters)
+    #     procs = int(procs)
+    # except:
+    #     print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
+    #     sys.exit(1)
+    # iters = iters+1
+    iters, procs = parse_iterproc(iterproc_arg)
     
     
     #Ahora iters y procs representan los argumentos para mergeResulst
     
     if post_options == "impz":
-        print("→ Ejecutando mergeResult para impedance tensor option...")
-        for ii in range(iters):
-            os.system(f"cd {results_path} && mergeResult {ii} {procs} -csv && sleep 0.5")
-            print('Continua iteracion: ',ii)
-            os.system(f"cd {results_path} && mv result_MT.csv result_impedance_iter{ii}.csv ")
-            os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
+        merge_impedance(results_path, iters, procs)
     
     # elif post_options == "rhoph":
-        print("→ Ejecutando mergeResult para Rhooa and phase optionp...")
-        # ╰─❯ mergeResult 0 2 -appphs ; sleep 1 ; mv result_MT.csv result_rho_phase_iter0.csv
-        for ii in range(iters):
 
-            print("iteracion",ii)
-            os.system(f"cd {results_path} && mergeResult {ii} {procs} -appphs && sleep 0.5")
-            os.system(f"cd {results_path} && mv result_MT.txt result_rho_phase_iter{ii}.txt ")
-            os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
-            print(f'esto es la iteracion {ii}')
+        merge_rhoph(results_path, iters, procs)
+
+
     # elif post_options == "None":
     elif post_options == "none":
         print(f"Preprocessing option '{post_options}' selected.") 
@@ -194,15 +258,6 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
         freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
         
         
-    # freq_exp = freq.apply(lambda x: f"{x:.3e}")
-    # print(freq_exp)
-    # rho_obs = rhoph_iter[last_it][site]["AppRxyObs"]
-    # phase_obs = rhoph_iter[last_it][site]["PhsxyObs"]
-    #
-    # rho_cal = rhoph_iter[last_it][site]["AppRxyCal"]
-    # phase_cal = rhoph_iter[last_it][site]["PhsxyCal"]
-    #
-    
 
     if components is None:
         component_names = ["xy", "yx"]  # default
@@ -317,6 +372,12 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
 
 
 
+                    # fig, (ax1, ax2) = plot.subplots(2)
+                    # fig.suptitle('Axes values are scaled individually by default')
+                    # ax_rho.plot(axis_x, rho_cal,)
+                    # ax_rho.set_xlabel("Frequency (Hz)",fontsize=9)
+                    # ax_phi.semilogx(axis_x, phase_cal)
+                    # ax_rho.set_xlabel("Frequency (Hz)",fontsize=9)
 
 
 
@@ -404,6 +465,11 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     tot = range(iters)
     inicio = tot[0]
     fin = tot[-1]
+    
+
+    #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  # #
+    #   Segundo plot
+    #
 
     rms_global=np.zeros(len(archivos_MT))
     for j in range(len(archivos_MT)):
@@ -418,7 +484,10 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     # plot.show()
     
     
-    #RMS per Site
+    #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  # #
+    #   Tercer  plot
+    #   RMS per Site
+
     #keys devuelve una vista iterable y entonces se le puede apicar max()
     last_iter=max(rms_iter.keys())
     
