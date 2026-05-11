@@ -132,186 +132,10 @@ def merge_rhoph(results_path, iters, procs):
         os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
         print(f'esto es la iteracion {ii}')
 
+# def plot_mt_response(sites, components, freq, plot_x_axis, rhoph_iter, z_iter, last_it, iters):
+def plot_mt_response(sites, components, freq, plot_x_axis, rhoph_iter, last_it):
 
-
-# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
-# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
-# = = = = = =                   MAIN ROUTINE                = = = = = = = = = = = 
-# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
-# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
-def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
-    
-    
-    # Si solo hay 3 argumentos totales: path st1-3 freq
-    if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
-        plot_x_axis = post_options
-        post_options = None
-    
-
-    
-    # =======================
-    # 2) ARGUMENTO DE STES
-    # =========================
-    #
-    # if not sites_arg.startswith("st"):
-    #      print("Formato de sites incorrecto. Usa por ejemplo: st1-4")
-    #      sys.exit(1)
-    # try:
-    #     rango = sites_arg[2:]           # quita "st"
-    #     inicio, fin = rango.split("-")  # separa 1 y 4
-    #     inicio = int(inicio)
-    #     fin = int(fin)
-    # except:
-    #     print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
-    #     sys.exit(1)
-    #
-    # if inicio > fin:
-    #     print("El rango está invertido.")
-    #     sys.exit(1)
-    #
-    # sites = list(range(inicio, fin + 1))
-
-    sites = parse_sites(sites_arg)
-    
-    
-    # =======================
-    # 2) ARGUMENTO DE ITER and PROCESSES
-    # =========================
-    # if iterproc_arg is None:
-    #     print("Falta argumento ipX-M")
-    #     sys.exit(1)
-    # if not iterproc_arg.startswith("ip"):
-    #     print("Formato incorrecto en iter-proc. Ejemplo: ip11-4")
-    #     sys.exit(1)
-    #
-    # try:
-    #     rango = iterproc_arg[2:]        # quita "ip"
-    #     iters, procs = rango.split("-")  # separa X y M
-    #     iters = int(iters)
-    #     procs = int(procs)
-    # except:
-    #     print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
-    #     sys.exit(1)
-    # iters = iters+1
-    iters, procs = parse_iterproc(iterproc_arg)
-    
-    
-    #Ahora iters y procs representan los argumentos para mergeResulst
-    
-    if post_options == "impz":
-        merge_impedance(results_path, iters, procs)
-    
-    # elif post_options == "rhoph":
-
-        merge_rhoph(results_path, iters, procs)
-
-
-    # elif post_options == "None":
-    elif post_options == "none":
-        print(f"Preprocessing option '{post_options}' selected.") 
-        print("Results already merged")
-    
-    else:
-        print(f"❌ ❌ ❌ ❌ ❌  Preprocessing option '{post_options}' not defined.") 
-        print("Opciones válidas: Z, rhoph or none")
-        sys.exit(1)
-    
-    # os.system(f"cd {results_path} && ls -la")
-    
-    
-    
-    # =========================
-    # 1) CONFIGURACIÓN BÁSICA
-    # =========================
-    # Componente a evaluar: "Zxy", "Zyx", "Zxx", "Zyy"
-    print(f"  \n     📂Leyendo resultados de: {results_path}")
-    print(f"     📌Sites seleccionados: {sites}")
-    
-    
-    paths = build_postprocessing_paths(results_path)
-    
-    # archivos_MT = sorted(glob.glob(PATTERN_MT))
-    # archivos_RMS = sorted(glob.glob(PATTERN_RMS))
-    # archivos_RHOPHASE = sorted(glob.glob(PATTERN_RHOPH))
-
-    archivos_MT = sorted(glob.glob(paths["mt_pattern"]))
-    archivos_RMS = sorted(glob.glob(paths["rms_pattern"]))
-    archivos_RHOPHASE = sorted(glob.glob(paths["rhoph_pattern"]))
-    
-    
-    #Inicializo mi diccionario a  0
-    z_iter = {}
-    rms_iter = {}
-    rhoph_iter = {}
-    #El diccionario tendra la forma
-    #iter {1:DataFrameZ_iter1, 2:DataFramZ_iter2,...}
-    for ii in archivos_MT:
-        nombre = os.path.basename(ii)
-        numero = int(nombre.replace("result_impedance_iter","").replace(".csv",""))
-        dfZ= pd.read_csv(ii)
-        z_iter[numero]=dfZ
-    
-    for ii in archivos_RMS:
-        nombre = os.path.basename(ii)
-        numero = int(nombre.replace("RMS_iter","").replace(".out",""))
-        dfRMS = pd.read_csv(ii,sep=r'\s+')
-        dfRMS.columns = dfRMS.columns.str.strip() # --> trim espacios
-        rms_iter[numero] = dfRMS
-    
-    for ii in archivos_RHOPHASE:
-        nombre = os.path.basename(ii)
-        numero = int(nombre.replace("result_rho_phase_iter","").replace(".txt",""))
-        dfRHOPHASE = pd.read_csv (ii,sep=r'\s+')
-        dfRHOPHASE.columns = dfRHOPHASE.columns.str.strip() # --> trim espacios
-        rhoph_iter[numero] = dfRHOPHASE
-    
-    #Mis tres diccionarios
-    ## z_iter ; rms_iter ; rhoph_iter
-
-    # sitesRMS = pd.read_csv(coord_path,sep=r'\s+', header=None)
-    sitesRMS = pd.read_csv(paths["coord_path"],sep=r'\s+', header=None)
-    sitesRMS = sitesRMS.iloc[:,0:3]
-    sitesRMS.columns = ["SiteName","X","Y"]
-    #adding an extra column to be able the merge with RMS file data
-    sitesRMS["Site"] = np.arange(1,len(sitesRMS)+1)
-
-    coast      = np.loadtxt(paths["coast_path"], skiprows=1)
-    domain = np.loadtxt(paths["domain_path"])
-
-    run_statistics = pd.read_csv(paths["stats_path"] , sep=r'\s+',usecols=[0,4,6])
-
-    
-    
-    #Site,Frequency,
-    # ReZxxCal,ImZxxCal,ReZxyCal,ImZxyCal,ReZyxCal,ImZyxCal,ReZyyCal,ImZyyCal
-    # ReZxxObs,ImZxxObs,ReZxyObs,ImZxyObs,ReZyxObs,ImZyxObs,ReZyyObs,ImZyyObs
-    # ReZxxErr,ImZxxErr,ReZxyErr,ImZxyErr,ReZyxErr,ImZyxErr,ReZyyErr,ImZyyErr
-    
-    #Site Frequency      AppRxxCal PhsxxCal AppRxyCal PhsxyCal AppRyxCal PhsyxCal AppRyyCal PhsyyCal
-    #AppRxxObs  PhsxxObs  AppRxyObs PhsxyObs AppRyxObs PhsyxObs AppRyyObs  PhsyyObs AppRxxErr  PhsxxErr AppRxyErr  PhsxyErr      AppRyxErr       PhsyxErr      AppRyyErr       PhsyyErr
-    
-    #       Site     #Data            RMS
-    
     n_sites = len(sites)
-    last_it = iters-1    #       ---> aqui le quitamos el + 1 del range agregado al inicio
-    print(f"DEBUG: iters={iters}, last_it={last_it}")  # ← añade esta línea
-    
-    
-
-    #Definimos la frecuencia
-    freq = z_iter[last_it][z_iter[last_it]["Site"] == 1]["Frequency"]
-
-    # if post_options == "impz":
-    #     freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-    #
-    # elif post_options == "rhoph":
-    #     freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-    #
-    # else: 
-    #     freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-    #     freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
-    #
-        
 
     if components is None:
         component_names = ["xy", "yx"]  # default
@@ -516,35 +340,28 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
         frameon=False,
         bbox_to_anchor=(0.76, 0.05)
     )
+
+def plot_global_RMSvsIter(archivos_MT, rms_iter, iters):
     tot = range(iters)
     inicio = tot[0]
     fin = tot[-1]
-    
-
-    #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  # #
-    #   Segundo plot
-    #
 
     rms_global=np.zeros(len(archivos_MT))
     for j in range(len(archivos_MT)):
         rms_global[j] = np.sqrt(np.mean(rms_iter[j]["RMS"])**2)
-    
+
     plot.figure()
     plot.plot(range(len(archivos_MT)),rms_global, '-x', markersize=9)
     plot.xlabel("Iterations")
     plot.ylabel("Global RMS")
     plot.grid(True,which="both")
     plot.xticks(range(inicio, fin, 1))
-    # plot.show()
-    
-    
-    #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  # #
-    #   Tercer  plot
-    #   RMS per Site
 
+
+def plot_RMS_per_site(rms_iter):
     #keys devuelve una vista iterable y entonces se le puede apicar max()
     last_iter=max(rms_iter.keys())
-    
+
     #Luego selecciono del diccionario el datafram de la iteracion deseada
     df = rms_iter[last_iter]
     #luego al dataframe de Site convierto toda esa fila a numeros, por lo tanto el Total
@@ -553,10 +370,10 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     #Y finalmente quito la fila que contenga NaN
     df = df.dropna(subset=["Site"])
     #y ahora ya mi df me queda del mismo tamaño
-    
+
     sites_plot = df["Site"] 
     rms_sites = df["RMS"] 
-    
+
     plot.figure()
     plot.plot(sites_plot,rms_sites-1, 'o-')
     plot.xlabel("Site")
@@ -565,6 +382,201 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     plot.grid(True,alpha=0.3)
     plot.axhline(1, color='r', linestyle='--', alpha=0.5)
     plot.xticks(range(int(sites_plot.min()),int(sites_plot.max())+1,3))
+
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+# = = = = = =                   MAIN ROUTINE                = = = = = = = = = = = 
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+# = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
+def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
+    
+    
+    # Si solo hay 3 argumentos totales: path st1-3 freq
+    if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
+        plot_x_axis = post_options
+        post_options = None
+    
+
+    
+    # =======================
+    # 2) ARGUMENTO DE STES
+    # =========================
+    #
+    # if not sites_arg.startswith("st"):
+    #      print("Formato de sites incorrecto. Usa por ejemplo: st1-4")
+    #      sys.exit(1)
+    # try:
+    #     rango = sites_arg[2:]           # quita "st"
+    #     inicio, fin = rango.split("-")  # separa 1 y 4
+    #     inicio = int(inicio)
+    #     fin = int(fin)
+    # except:
+    #     print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
+    #     sys.exit(1)
+    #
+    # if inicio > fin:
+    #     print("El rango está invertido.")
+    #     sys.exit(1)
+    #
+    # sites = list(range(inicio, fin + 1))
+
+    sites = parse_sites(sites_arg)
+    
+    
+    # =======================
+    # 2) ARGUMENTO DE ITER and PROCESSES
+    # =========================
+    # if iterproc_arg is None:
+    #     print("Falta argumento ipX-M")
+    #     sys.exit(1)
+    # if not iterproc_arg.startswith("ip"):
+    #     print("Formato incorrecto en iter-proc. Ejemplo: ip11-4")
+    #     sys.exit(1)
+    #
+    # try:
+    #     rango = iterproc_arg[2:]        # quita "ip"
+    #     iters, procs = rango.split("-")  # separa X y M
+    #     iters = int(iters)
+    #     procs = int(procs)
+    # except:
+    #     print("Formato inválido. Usa: stX-Y  (ejemplo: st1-4)")
+    #     sys.exit(1)
+    # iters = iters+1
+    iters, procs = parse_iterproc(iterproc_arg)
+    
+    
+    #Ahora iters y procs representan los argumentos para mergeResulst
+    
+    if post_options == "impz":
+        merge_impedance(results_path, iters, procs)
+    
+    # elif post_options == "rhoph":
+
+        merge_rhoph(results_path, iters, procs)
+
+
+    # elif post_options == "None":
+    elif post_options == "none":
+        print(f"Preprocessing option '{post_options}' selected.") 
+        print("Results already merged")
+    
+    else:
+        print(f"❌ ❌ ❌ ❌ ❌  Preprocessing option '{post_options}' not defined.") 
+        print("Opciones válidas: Z, rhoph or none")
+        sys.exit(1)
+    
+    # os.system(f"cd {results_path} && ls -la")
+    
+    
+    
+    # =========================
+    # 1) CONFIGURACIÓN BÁSICA
+    # =========================
+    # Componente a evaluar: "Zxy", "Zyx", "Zxx", "Zyy"
+    print(f"  \n     📂Leyendo resultados de: {results_path}")
+    print(f"     📌Sites seleccionados: {sites}")
+    
+    
+    paths = build_postprocessing_paths(results_path)
+    
+    # archivos_MT = sorted(glob.glob(PATTERN_MT))
+    # archivos_RMS = sorted(glob.glob(PATTERN_RMS))
+    # archivos_RHOPHASE = sorted(glob.glob(PATTERN_RHOPH))
+
+    archivos_MT = sorted(glob.glob(paths["mt_pattern"]))
+    archivos_RMS = sorted(glob.glob(paths["rms_pattern"]))
+    archivos_RHOPHASE = sorted(glob.glob(paths["rhoph_pattern"]))
+    
+    
+    #Inicializo mi diccionario a  0
+    z_iter = {}
+    rms_iter = {}
+    rhoph_iter = {}
+    #El diccionario tendra la forma
+    #iter {1:DataFrameZ_iter1, 2:DataFramZ_iter2,...}
+    for ii in archivos_MT:
+        nombre = os.path.basename(ii)
+        numero = int(nombre.replace("result_impedance_iter","").replace(".csv",""))
+        dfZ= pd.read_csv(ii)
+        z_iter[numero]=dfZ
+    
+    for ii in archivos_RMS:
+        nombre = os.path.basename(ii)
+        numero = int(nombre.replace("RMS_iter","").replace(".out",""))
+        dfRMS = pd.read_csv(ii,sep=r'\s+')
+        dfRMS.columns = dfRMS.columns.str.strip() # --> trim espacios
+        rms_iter[numero] = dfRMS
+    
+    for ii in archivos_RHOPHASE:
+        nombre = os.path.basename(ii)
+        numero = int(nombre.replace("result_rho_phase_iter","").replace(".txt",""))
+        dfRHOPHASE = pd.read_csv (ii,sep=r'\s+')
+        dfRHOPHASE.columns = dfRHOPHASE.columns.str.strip() # --> trim espacios
+        rhoph_iter[numero] = dfRHOPHASE
+    
+    #Mis tres diccionarios
+    ## z_iter ; rms_iter ; rhoph_iter
+
+    # sitesRMS = pd.read_csv(coord_path,sep=r'\s+', header=None)
+    sitesRMS = pd.read_csv(paths["coord_path"],sep=r'\s+', header=None)
+    sitesRMS = sitesRMS.iloc[:,0:3]
+    sitesRMS.columns = ["SiteName","X","Y"]
+    #adding an extra column to be able the merge with RMS file data
+    sitesRMS["Site"] = np.arange(1,len(sitesRMS)+1)
+
+    coast      = np.loadtxt(paths["coast_path"], skiprows=1)
+    domain = np.loadtxt(paths["domain_path"])
+
+    run_statistics = pd.read_csv(paths["stats_path"] , sep=r'\s+',usecols=[0,4,6])
+
+    
+    
+    #Site,Frequency,
+    # ReZxxCal,ImZxxCal,ReZxyCal,ImZxyCal,ReZyxCal,ImZyxCal,ReZyyCal,ImZyyCal
+    # ReZxxObs,ImZxxObs,ReZxyObs,ImZxyObs,ReZyxObs,ImZyxObs,ReZyyObs,ImZyyObs
+    # ReZxxErr,ImZxxErr,ReZxyErr,ImZxyErr,ReZyxErr,ImZyxErr,ReZyyErr,ImZyyErr
+    
+    #Site Frequency      AppRxxCal PhsxxCal AppRxyCal PhsxyCal AppRyxCal PhsyxCal AppRyyCal PhsyyCal
+    #AppRxxObs  PhsxxObs  AppRxyObs PhsxyObs AppRyxObs PhsyxObs AppRyyObs  PhsyyObs AppRxxErr  PhsxxErr AppRxyErr  PhsxyErr      AppRyxErr       PhsyxErr      AppRyyErr       PhsyyErr
+    
+    #       Site     #Data            RMS
+    
+    n_sites = len(sites)
+    last_it = iters-1    #       ---> aqui le quitamos el + 1 del range agregado al inicio
+    print(f"DEBUG: iters={iters}, last_it={last_it}")  # ← añade esta línea
+    
+    
+
+    #Definimos la frecuencia
+    freq = z_iter[last_it][z_iter[last_it]["Site"] == 1]["Frequency"]
+    # freq = rhoph_iter[last_it][rhoph_iter[last_it]["Site"] == 1]["Frequency"]
+
+
+    # if post_options == "impz":
+    #     freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #
+    # elif post_options == "rhoph":
+    #     freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #
+    # else: 
+    #     freq = rhoph_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #     freq = z_iter[last_it][z_iter[last_it]["Site"]==1]["Frequency"]
+    #
+        
+
+    plot_mt_response(sites, components, freq, plot_x_axis, rhoph_iter, last_it)
+
+    #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  # #
+    #   Segundo plot
+    #
+    plot_global_RMSvsIter(archivos_MT,rms_iter, iters)
+    # plot.show()
+    
+    
+    #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  # #
+    #   Tercer  plot
+    #   RMS per Site
+    plot_RMS_per_site(rms_iter)
     # plot.show()
     
 
@@ -597,6 +609,7 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     # rms_df = rms_selected[["Site","RMS"]]
 
 
+    last_iter=max(rms_iter.keys())
     rms_selected = rms_iter[last_it]
     rms_df = rms_selected[["Site", "RMS"]].copy()  # .copy() para no modificar el diccionario original
     rms_df["Site"] = pd.to_numeric(rms_df["Site"], errors="coerce")  # convierte texto a número, y "Total" → NaN
@@ -688,6 +701,10 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     # plot the coordinate heat map with RMS error in each station
     #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    tot = range(iters)
+    inicio = tot[0]
+    fin = tot[-1]
+
     roughness = run_statistics["Roughness"]
     iterations = run_statistics["Iter#"]
     globRMS = run_statistics["RMS"]
