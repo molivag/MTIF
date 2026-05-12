@@ -21,6 +21,13 @@ def plot_mt_response(sites, components, freq, plot_x_axis, rhoph_iter, last_it):
     #Las figuras Rho and Ph vs freq Obs y Cal en 4 componentes
     fig = plot.figure(figsize=(4*n_sites, 12))
     fig.suptitle(rf"Respuesta calculada vs observada", fontsize=16, y=0.95)
+    fig.subplots_adjust(
+        top=0.90,
+        bottom=0.08,
+        left=0.05,
+        right=0.98,
+        wspace=0.25,
+        hspace=0.15)
     
     n_comp = len(component_names)
     # Grid exterior: 4 componentes × n_sites
