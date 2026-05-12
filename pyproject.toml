@@ -5,15 +5,40 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mtif"
-version = "0.1.0"
-description = "Magnetotelluric Inversion Framework using FEMTIC"
+version = "0.1.4"
+description = "Magnetotelluric Inversion Framework designed for FEMTIC"
 authors = [{ name = "Marco A. Oliva Gutierrez" }]
 readme = "README.md"
 requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
 
+keywords = [
+  "magnetotellurics",
+  "geophysics",
+  "femtic",
+  "finite-elements",
+  "inversion",
+  "electromagnetics",
+]
 
 [project.scripts]
 mtif = "mtif.cli:main"
+
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Scientific/Engineering :: Physics",
+  "Topic :: Scientific/Engineering :: Visualization",
+  "Intended Audience :: Science/Research",
+]
+
+dependencies = ["numpy", "pandas", "matplotlib"]
+
+
+[project.urls]
+Homepage = "https://github.com/molivag/MTIF"
 
 
 [tool.setuptools]
