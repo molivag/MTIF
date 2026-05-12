@@ -99,26 +99,6 @@ def build_postprocessing_paths(results_path):
 
 
 
-def merge_impedance(results_path, iters, procs):
-    print("→ Ejecutando mergeResult para impedance tensor option...")
-    for ii in range(iters):
-        os.system(f"cd {results_path} && mergeResult {ii} {procs} -csv && sleep 0.5")
-        print('Continua iteracion: ',ii)
-        os.system(f"cd {results_path} && mv result_MT.csv result_impedance_iter{ii}.csv ")
-        os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
-
-
-def merge_rhoph(results_path, iters, procs):
-    print("→ Ejecutando mergeResult para Rhooa and phase optionp...")
-    # ╰─❯ mergeResult 0 2 -appphs ; sleep 1 ; mv result_MT.csv result_rho_phase_iter0.csv
-
-    for ii in range(iters):
-
-        print("iteracion",ii)
-        os.system(f"cd {results_path} && mergeResult {ii} {procs} -appphs && sleep 0.5")
-        os.system(f"cd {results_path} && mv result_MT.txt result_rho_phase_iter{ii}.txt ")
-        os.system(f"cd {results_path} && mv RMS.out RMS_iter{ii}.out ")
-        print(f'esto es la iteracion {ii}')
 
 def load_iteration_results(archivos_MT, archivos_RMS, archivos_RHOPHASE,last_it):
     #Inicializo mi diccionario a  0
@@ -180,35 +160,17 @@ def getting_results_FEMTIC(paths):
 # = = = = = =                   MAIN ROUTINE                = = = = = = = = = = = 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 # = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
-def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
+# def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, components=None):
+def run(results_path, iterations, sites_arg, plot_x_axis, components=None):
     
     
     # Si solo hay 3 argumentos totales: path st1-3 freq
-    if post_options in ["freq", "period"] and iterproc_arg is None and plot_x_axis is None:
-        plot_x_axis = post_options
-        post_options = None
     
-    iters, procs = parse_iterproc(iterproc_arg)
-    last_it = iters-1    #       ---> aqui le quitamos el + 1 del range agregado al inicio
+    # iters, procs = parse_iterproc(iterproc_arg)
+    last_it = iterations# iters-1    #       ---> aqui le quitamos el + 1 del range agregado al inicio
+    iters = last_it + 1
     sites = parse_sites(sites_arg)
-    print(f"DEBUG: iters={iters}, last_it={last_it}")  # ← añade esta línea
-    
-    #Ahora iters y procs representan los argumentos para mergeResulst
-    if post_options == "impz":
-        merge_impedance(results_path, iters, procs)
-    
-    # elif post_options == "rhoph":
-        merge_rhoph(results_path, iters, procs)
-
-    # elif post_options == "None":
-    elif post_options == "none":
-        print(f"Preprocessing option '{post_options}' selected.") 
-        print("Results already merged")
-    
-    else:
-        print(f"❌ ❌ ❌ ❌ ❌  Preprocessing option '{post_options}' not defined.") 
-        print("Opciones válidas: Z, rhoph or none")
-        sys.exit(1)
+    # print(f"DEBUG: iters={iters}, last_it={last_it}")  # ← añade esta línea
     
     # os.system(f"cd {results_path} && ls -la")
     print(f"  \n     📂Leyendo resultados de: {results_path}")
@@ -234,9 +196,6 @@ def run(results_path, sites_arg, iterproc_arg, plot_x_axis, post_options=None, c
     #AppRxxObs  PhsxxObs  AppRxyObs PhsxyObs AppRyxObs PhsyxObs AppRyyObs  PhsyyObs AppRxxErr  PhsxxErr AppRxyErr  PhsxyErr      AppRyxErr       PhsyxErr      AppRyyErr       PhsyyErr
     #       Site     #Data            RMS
     
-   
-
-
     plot_visualization(
         sites, 
         components, 
