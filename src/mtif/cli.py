@@ -7,6 +7,7 @@ from mtif.download import run_download
 from mtif.install import run_install
 from mtif.doctor import run_doctor
 from mtif.meshing import run_mesh
+from mtif.merge import run_merge
 from mtif.postprocessing import run_post 
 from mtif.runInversion import run_inversion
 from mtif.upload import run_upload
@@ -77,6 +78,41 @@ def main():
         help="Check dependencies",
         description="Execute a complete checker of dependencies and version installed."
     )
+    # --------------------------------------------------
+    # MERGE
+    # --------------------------------------------------
+    merge_parser = subparsers.add_parser(
+        "merge",
+        help="Merge FEMTIC parallel results",
+        description="Run mergeResult preprocessing FEMTIC tool for inversion outputs from parallel runs."
+    )
+    merge_parser.add_argument(
+        "job",
+        help="Job folder"
+    )
+    #
+    # merge_parser.add_argument(
+    #     "--mode",
+    #     choices=["impz", "rhoph"],
+    #     help="Postprocessing mode"
+    # "--mode",
+    # choices=["imp", "rhoph", "both"],
+    # default="both",
+    # help="Merge output type"
+    # )
+    
+    merge_parser.add_argument(
+        "--iter",
+        type=int,
+        help="Number of iterations"
+    )
+    
+    merge_parser.add_argument(
+        "--proc",
+        type=int,
+        help="Number of processes"
+    )
+
 
     # --------------------------------------------------
     # MESH
@@ -161,25 +197,13 @@ def main():
     default=["xy", "yx"],         # default si no se pasa nada
     help="Componentes a plotear (e.g. --comp xy yx)"
     )
-    
-    post_parser.add_argument(
-        "--mode",
-        choices=["impz", "rhoph"],
-        help="Postprocessing mode"
-    )
-    
+
     post_parser.add_argument(
         "--iter",
         type=int,
-        help="Number of iterations"
+        help="Iteration to visualize"
     )
     
-    post_parser.add_argument(
-        "--proc",
-        type=int,
-        help="Number of processes"
-    )
-
     post_parser.add_argument(
         "--axis",
         help="Set x axis (e.g., freq or period)"
@@ -196,6 +220,9 @@ def main():
 
     elif args.command == "doctor":
         run_doctor()
+
+    elif args.command == "merge":
+        run_merge(args)
 
     elif args.command == "mesh":
         run_mesh(args)
